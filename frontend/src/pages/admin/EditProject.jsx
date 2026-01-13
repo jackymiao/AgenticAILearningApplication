@@ -25,12 +25,7 @@ export default function EditProject() {
         youtubeUrl: data.youtube_url || '',
         wordLimit: data.word_limit,
         attemptLimitPerCategory: data.attempt_limit_per_category,
-        agentMode: data.agent_mode,
-        agentAId: data.agent_a_id || '',
-        agentBGrammarId: data.agent_b_grammar_id || '',
-        agentBStructureId: data.agent_b_structure_id || '',
-        agentBStyleId: data.agent_b_style_id || '',
-        agentBContentId: data.agent_b_content_id || ''
+        agentMode: data.agent_mode
       });
       setLoading(false);
     } catch (err) {
@@ -162,73 +157,10 @@ export default function EditProject() {
                 <option value="agent_a">Agent A (Single agent for all categories)</option>
                 <option value="agent_b">Agent B (Separate agents per category)</option>
               </select>
-            </div>
-
-            {formData.agentMode === 'agent_a' && (
-              <div style={{ marginBottom: '20px' }}>
-                <label>Agent A ID *</label>
-                <input
-                  type="text"
-                  name="agentAId"
-                  value={formData.agentAId}
-                  onChange={handleChange}
-                  placeholder="asst_..."
-                  required
-                />
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                The system will use preset Agent Builder SDKs based on your selection
               </div>
-            )}
-
-            {formData.agentMode === 'agent_b' && (
-              <>
-                <div style={{ marginBottom: '20px' }}>
-                  <label>Grammar Agent ID *</label>
-                  <input
-                    type="text"
-                    name="agentBGrammarId"
-                    value={formData.agentBGrammarId}
-                    onChange={handleChange}
-                    placeholder="asst_..."
-                    required
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label>Structure Agent ID *</label>
-                  <input
-                    type="text"
-                    name="agentBStructureId"
-                    value={formData.agentBStructureId}
-                    onChange={handleChange}
-                    placeholder="asst_..."
-                    required
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label>Style Agent ID *</label>
-                  <input
-                    type="text"
-                    name="agentBStyleId"
-                    value={formData.agentBStyleId}
-                    onChange={handleChange}
-                    placeholder="asst_..."
-                    required
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label>Content Agent ID *</label>
-                  <input
-                    type="text"
-                    name="agentBContentId"
-                    value={formData.agentBContentId}
-                    onChange={handleChange}
-                    placeholder="asst_..."
-                    required
-                  />
-                </div>
-              </>
-            )}
+            </div>
 
             {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}
 
