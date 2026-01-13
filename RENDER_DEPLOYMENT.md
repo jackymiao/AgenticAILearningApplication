@@ -28,7 +28,7 @@
   - **Branch**: `main`
   - **Root Directory**: `backend`
   - **Runtime**: `Node`
-  - **Build Command**: `npm install && npm run build`
+  - **Build Command**: `npm install --include=dev && npm run build`
   - **Start Command**: `npm start`
   - **Plan**: Free (or paid)
 
