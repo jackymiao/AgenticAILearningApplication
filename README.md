@@ -1,4 +1,4 @@
-# Essay Grading Platform
+# Agentic AI Learning
 
 A full-stack essay grading application with AI-powered feedback using OpenAI Agent Builder agents.
 

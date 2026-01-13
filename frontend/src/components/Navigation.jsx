@@ -36,7 +36,7 @@ export default function Navigation() {
           textDecoration: 'none',
           color: '#333'
         }}>
-          Essay Grading Platform
+          Agentic AI Learning
         </Link>
         
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Development startup script for Essay Grading Platform
+# Development startup script for Agentic AI Learning
 
-echo "🚀 Starting Essay Grading Platform..."
+echo "🚀 Starting Agentic AI Learning..."
 echo ""
 
 # Check if running from project root

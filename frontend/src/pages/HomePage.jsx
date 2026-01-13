@@ -24,7 +24,7 @@ export default function HomePage() {
   return (
     <PageContainer>
       <div style={{ maxWidth: '500px', margin: '80px auto', textAlign: 'center' }}>
-        <h1 style={{ marginBottom: '16px' }}>Welcome to Essay Grading Platform</h1>
+        <h1 style={{ marginBottom: '16px' }}>Welcome to Agentic AI Learning</h1>
         <p style={{ marginBottom: '32px', color: '#666' }}>
           Enter your 6-character project code to get started
         </p>

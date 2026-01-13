@@ -260,4 +260,4 @@ After deployment, regularly check:
 
 ---
 
-✅ **Deployment Complete!** Your essay grading platform is now live.
+✅ **Deployment Complete!** Your Agentic AI Learning platform is now live.

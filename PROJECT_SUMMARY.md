@@ -1,4 +1,4 @@
-# Essay Grading Platform - Project Summary
+# Agentic AI Learning - Project Summary
 
 ## 📋 What Has Been Built
 
