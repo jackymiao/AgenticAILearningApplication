@@ -58,7 +58,7 @@ app.use(
     store: new PgStore({
       pool,
       tableName: 'session',
-      createTableIfMissing: false
+      createTableIfMissing: true
     }),
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
     resave: false,
@@ -68,7 +68,8 @@ app.use(
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-    }
+    },
+    proxy: true
   })
 );
 
