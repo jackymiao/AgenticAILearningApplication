@@ -77,6 +77,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Root route for debugging
+app.get('/', (req: Request, res: Response) => {
+  res.json({ 
+    message: 'Essay Grading Backend API',
+    endpoints: ['/api/health', '/api/auth', '/api/public', '/api/admin']
+  });
+});
+
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
