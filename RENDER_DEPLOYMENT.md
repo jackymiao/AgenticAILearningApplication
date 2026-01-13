@@ -28,7 +28,7 @@
   - **Branch**: `main`
   - **Root Directory**: `backend`
   - **Runtime**: `Node`
-  - **Build Command**: `npm install`
+  - **Build Command**: `npm install && npm run build`
   - **Start Command**: `npm start`
   - **Plan**: Free (or paid)
 
@@ -86,13 +86,23 @@ Option B - Using One-Off Job:
 - [ ] Add: `VITE_API_BASE` = `https://your-backend-url.onrender.com/api`
   - Use the backend URL from Backend Step 4
 
-### 3. Configure SPA Rewrite
+### 3. Configure SPA Routing
 
-- [ ] Go to "Redirects/Rewrites" tab
-- [ ] Add rule:
-  - **Source**: `/*`
-  - **Destination**: `/index.html`
-  - **Action**: `Rewrite`
+Since Render doesn't have a Redirects/Rewrites UI for static sites, create a `_redirects` file:
+
+- [ ] In your local `frontend/public/` directory, create a file named `_redirects`
+- [ ] Add this single line to the file:
+  ```
+  /*    /index.html   200
+  ```
+- [ ] Commit and push to GitHub:
+  ```bash
+  git add frontend/public/_redirects
+  git commit -m "Add _redirects for SPA routing"
+  git push
+  ```
+
+This tells Render to serve `index.html` for all routes, allowing React Router to handle client-side navigation.
 
 ### 4. Deploy Frontend
 
