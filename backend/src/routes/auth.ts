@@ -13,22 +13,27 @@ router.post('/admin/signup', async (req: Request, res: Response): Promise<void> 
       return;
     }
     
-    // Validate access code
-    if (accessCode !== process.env.ADMIN_SIGNUP_CODE) {
+    // Check if this is a super admin signup
+    const isSuperAdmin = accessCode === process.env.SUPER_ADMIN_CODE;
+    
+    // Validate access code - must be either regular or super admin code
+    if (!isSuperAdmin && accessCode !== process.env.ADMIN_SIGNUP_CODE) {
       res.status(403).json({ error: 'Invalid access code' });
       return;
     }
     
-    // Create admin user
-    const admin = await createAdmin(username, password);
+    // Create admin user with appropriate role
+    const admin = await createAdmin(username, password, isSuperAdmin);
     
     // Set session
     req.session.adminId = admin.id;
     req.session.adminUsername = admin.username;
+    req.session.isSuperAdmin = admin.is_super_admin || false;
     
     res.json({
       isAdmin: true,
-      adminName: admin.username
+      adminName: admin.username,
+      isSuperAdmin: admin.is_super_admin || false
     });
   } catch (error: any) {
     if (error.code === '23505') { // Unique constraint violation
@@ -57,13 +62,15 @@ router.post('/admin/login', async (req: Request, res: Response): Promise<void> =
       return;
     }
     
-    // Set session
+    // Set session with role information
     req.session.adminId = admin.id;
     req.session.adminUsername = admin.username;
+    req.session.isSuperAdmin = admin.is_super_admin || false;
     
     res.json({
       isAdmin: true,
-      adminName: admin.username
+      adminName: admin.username,
+      isSuperAdmin: admin.is_super_admin || false
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -76,7 +83,8 @@ router.get('/me', (req: Request, res: Response): void => {
   if (req.session.adminId) {
     res.json({
       isAdmin: true,
-      adminName: req.session.adminUsername
+      adminName: req.session.adminUsername,
+      isSuperAdmin: req.session.isSuperAdmin || false
     });
     return;
   }

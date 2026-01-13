@@ -11,6 +11,14 @@
 
 ### 1. Create PostgreSQL Database
 
+**Option A: Using Neon (Recommended)**
+- [ ] Go to [Neon Console](https://console.neon.tech/)
+- [ ] Create new project: `essay-grading-db`
+- [ ] Select region closest to your Render service
+- [ ] Copy the connection string (starts with `postgresql://`)
+- [ ] Make sure to use the **pooled connection string** for better performance
+
+**Option B: Using Render PostgreSQL**
 - [ ] In Render dashboard, click "New +" → "PostgreSQL"
 - [ ] Name: `essay-grading-db`
 - [ ] Region: Choose closest to your users
@@ -38,7 +46,8 @@ Click "Environment" tab and add:
 
 - [ ] `DATABASE_URL` = (Internal Database URL from step 1)
 - [ ] `SESSION_SECRET` = (Generate random string, e.g., use `openssl rand -base64 32`)
-- [ ] `ADMIN_SIGNUP_CODE` = (Your secure access code for admin registration)
+- [ ] `ADMIN_SIGNUP_CODE` = (Your secure access code for regular admin registration)
+- [ ] `SUPER_ADMIN_CODE` = (Your super secure access code for super admin - sees all projects)
 - [ ] `OPENAI_API_KEY` = (Your OpenAI API key)
 - [ ] `NODE_ENV` = `production`
 - [ ] `FRONTEND_URL` = (Will add after frontend deployment)
@@ -52,14 +61,20 @@ Click "Environment" tab and add:
 
 ### 5. Run Database Migration
 
-Option A - Using Render Shell:
+**Important: You must run the migration to create required tables!**
+
+Option A - Using Render Shell (Preferred):
 - [ ] Go to backend service → "Shell" tab
+- [ ] Run: `npm install tsx` (if not already installed)
 - [ ] Run: `npm run db:migrate`
+- [ ] Should see: "✅ Database migrations completed successfully"
 
 Option B - Using One-Off Job:
 - [ ] In service settings, create manual job
 - [ ] Command: `npm run db:migrate`
 - [ ] Run job
+
+**Note for Neon users**: Neon automatically handles connection pooling. The session table will be auto-created on first use if the migration was successful.
 
 ### 6. Verify Backend
 
@@ -204,10 +219,21 @@ This tells Render to serve `index.html` for all routes, allowing React Router to
 
 ### Security Checklist
 - [ ] Strong `SESSION_SECRET` (32+ random characters)
-- [ ] Secure `ADMIN_SIGNUP_CODE` (not shared publicly)
+- [ ] Secure `ADMIN_SIGNUP_CODE` (for regular admins, not shared publicly)
+- [ ] Secure `SUPER_ADMIN_CODE` (for super admin access, keep very private)
 - [ ] HTTPS enabled (automatic with Render)
 - [ ] CORS configured for specific domain (not wildcard)
 - [ ] API key stored in environment variables (not in code)
+
+### Admin Role System
+This system uses two-tier admin access:
+- **Regular Admins**: Create account with `ADMIN_SIGNUP_CODE`, can only see/manage their own projects
+- **Super Admins**: Create account with `SUPER_ADMIN_CODE`, can see/manage all projects
+
+To set up super admin after deployment:
+1. Add `SUPER_ADMIN_CODE` environment variable in Render
+2. Run migration: `psql $DATABASE_URL -f backend/src/db/migrations/add_super_admin.sql`
+3. Create super admin account using the super admin code during signup
 
 ## 📊 Monitoring
 

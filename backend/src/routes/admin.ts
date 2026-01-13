@@ -8,16 +8,34 @@ const router = express.Router();
 // Apply admin auth to all routes
 router.use(requireAdmin);
 
-// Get all projects
+// Get all projects (filtered by admin role)
 router.get('/projects', async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await pool.query(
-      `SELECT p.code, p.title, p.description, p.created_at, p.updated_at,
-              a.username as created_by
-       FROM projects p
-       LEFT JOIN admin_users a ON p.created_by_admin_id = a.id
-       ORDER BY p.created_at DESC`
-    );
+    const isSuperAdmin = req.session.isSuperAdmin || false;
+    const adminId = req.session.adminId;
+    
+    let query, params;
+    
+    if (isSuperAdmin) {
+      // Super admin sees all projects
+      query = `SELECT p.code, p.title, p.description, p.created_at, p.updated_at,
+                      a.username as created_by
+               FROM projects p
+               LEFT JOIN admin_users a ON p.created_by_admin_id = a.id
+               ORDER BY p.created_at DESC`;
+      params = [];
+    } else {
+      // Regular admin sees only their own projects
+      query = `SELECT p.code, p.title, p.description, p.created_at, p.updated_at,
+                      a.username as created_by
+               FROM projects p
+               LEFT JOIN admin_users a ON p.created_by_admin_id = a.id
+               WHERE p.created_by_admin_id = $1
+               ORDER BY p.created_at DESC`;
+      params = [adminId];
+    }
+    
+    const result = await pool.query(query, params);
     
     res.json(result.rows);
   } catch (error) {

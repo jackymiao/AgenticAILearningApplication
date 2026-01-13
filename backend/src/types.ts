@@ -4,6 +4,7 @@ export interface Admin {
   id: string;
   username: string;
   password_hash?: string;
+  is_super_admin?: boolean;
   created_at: Date;
 }
 
