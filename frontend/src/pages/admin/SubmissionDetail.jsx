@@ -218,13 +218,114 @@ export default function SubmissionDetail() {
                       
                       {expandedReviews[review.id] && (
                         <div style={{ padding: '16px' }}>
-                          {review.status === 'success' && review.result_json && (
-                            <div style={{ whiteSpace: 'pre-wrap' }}>
-                              {typeof review.result_json === 'string' 
-                                ? review.result_json 
-                                : JSON.stringify(review.result_json, null, 2)}
-                            </div>
-                          )}
+                          {review.status === 'success' && review.result_json && (() => {
+                            try {
+                              const data = review.result_json;
+                              
+                              // Calculate correct score: 100 - total deducted points
+                              const calculateScore = (breakdown) => {
+                                if (!breakdown || !Array.isArray(breakdown) || breakdown.length === 0) {
+                                  return data.score || 0;
+                                }
+                                const totalDeductions = breakdown.reduce((sum, item) => {
+                                  return sum + (item.deducted_points || 0);
+                                }, 0);
+                                return Math.max(0, 100 - totalDeductions);
+                              };
+                              
+                              const score = calculateScore(data.breakdown);
+                              const scoreColor = score >= 80 ? '#4CAF50' : '#f44336';
+                              
+                              return (
+                                <div>
+                                  {/* Score */}
+                                  <div style={{ 
+                                    padding: '12px', 
+                                    backgroundColor: scoreColor, 
+                                    color: 'white', 
+                                    borderRadius: '4px', 
+                                    marginBottom: '16px',
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    textAlign: 'center'
+                                  }}>
+                                    Score: {score}/100
+                                  </div>
+
+                                  {/* Overview */}
+                                  {data.overview && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                      <h4 style={{ marginBottom: '8px' }}>Summary:</h4>
+                                      <p style={{ lineHeight: '1.6' }}>{data.overview}</p>
+                                    </div>
+                                  )}
+
+                                  {/* Breakdown */}
+                                  {data.breakdown && Array.isArray(data.breakdown) && data.breakdown.length > 0 && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                      <h4 style={{ marginBottom: '8px' }}>Breakdown:</h4>
+                                      <div style={{ paddingLeft: '12px' }}>
+                                        {data.breakdown.map((item, idx) => (
+                                          <div key={idx} style={{ 
+                                            marginBottom: '12px', 
+                                            padding: '12px', 
+                                            backgroundColor: '#fff9e6',
+                                            borderLeft: '3px solid #ff9800',
+                                            borderRadius: '4px'
+                                          }}>
+                                            <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff6f00' }}>
+                                              {item.category_name} (-{item.deducted_points} points)
+                                            </div>
+                                            <div style={{ color: '#666', marginBottom: '6px' }}>
+                                              {item.reason}
+                                            </div>
+                                            {item.examples && item.examples.length > 0 && (
+                                              <div style={{ marginTop: '8px' }}>
+                                                <strong style={{ fontSize: '14px' }}>Examples:</strong>
+                                                {item.examples.map((example, i) => (
+                                                  <div key={i} style={{ 
+                                                    marginTop: '4px', 
+                                                    padding: '6px 8px', 
+                                                    backgroundColor: '#fff', 
+                                                    borderRadius: '3px',
+                                                    fontSize: '14px',
+                                                    fontStyle: 'italic'
+                                                  }}>
+                                                    "{example}"
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Suggestions */}
+                                  {data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0 && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                      <h4 style={{ marginBottom: '8px' }}>Suggestions:</h4>
+                                      <ul style={{ paddingLeft: '24px', lineHeight: '1.8' }}>
+                                        {data.suggestions.map((suggestion, idx) => (
+                                          <li key={idx} style={{ marginBottom: '8px' }}>
+                                            {typeof suggestion === 'string' ? suggestion : suggestion.suggestion || JSON.stringify(suggestion)}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            } catch (error) {
+                              console.error('Error rendering review:', error);
+                              return (
+                                <div style={{ padding: '12px', backgroundColor: '#fff5f5', color: '#f44336', borderRadius: '4px' }}>
+                                  Error displaying results. Raw data: {JSON.stringify(review.result_json, null, 2)}
+                                </div>
+                              );
+                            }
+                          })()}
                           {review.status === 'error' && (
                             <div className="error">{review.error_message}</div>
                           )}
