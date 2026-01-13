@@ -7,6 +7,8 @@ export default function AdminDashboard() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedProjects, setSelectedProjects] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -23,6 +25,43 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedProjects(projects.map(p => p.code));
+    } else {
+      setSelectedProjects([]);
+    }
+  };
+
+  const handleSelectProject = (code) => {
+    setSelectedProjects(prev => 
+      prev.includes(code) 
+        ? prev.filter(c => c !== code)
+        : [...prev, code]
+    );
+  };
+
+  const handleDelete = async () => {
+    if (selectedProjects.length === 0) return;
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedProjects.length} project(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      await adminApi.deleteProjects(selectedProjects);
+      setSelectedProjects([]);
+      await loadProjects();
+    } catch (err) {
+      setError(err.message || 'Failed to delete projects');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageContainer>
@@ -36,9 +75,25 @@ export default function AdminDashboard() {
       <div style={{ padding: '24px 0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h1>Admin Dashboard</h1>
-          <Link to="/admin/projects/new">
-            <button className="primary">Create Project</button>
-          </Link>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {selectedProjects.length > 0 && (
+              <button 
+                className="secondary" 
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ 
+                  backgroundColor: '#dc3545', 
+                  color: 'white',
+                  border: 'none'
+                }}
+              >
+                {deleting ? 'Deleting...' : `Delete (${selectedProjects.length})`}
+              </button>
+            )}
+            <Link to="/admin/projects/new">
+              <button className="primary">Create Project</button>
+            </Link>
+          </div>
         </div>
 
         {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}
@@ -47,6 +102,14 @@ export default function AdminDashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
+                <th style={{ padding: '12px', width: '40px' }}>
+                  <input 
+                    type="checkbox"
+                    checked={projects.length > 0 && selectedProjects.length === projects.length}
+                    onChange={handleSelectAll}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Code</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Title</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Created By</th>
@@ -57,13 +120,21 @@ export default function AdminDashboard() {
             <tbody>
               {projects.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#666' }}>
+                  <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#666' }}>
                     No projects yet. Create your first project!
                   </td>
                 </tr>
               ) : (
                 projects.map(project => (
                   <tr key={project.code} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px' }}>
+                      <input 
+                        type="checkbox"
+                        checked={selectedProjects.includes(project.code)}
+                        onChange={() => handleSelectProject(project.code)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
                     <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: 'bold' }}>
                       {project.code}
                     </td>

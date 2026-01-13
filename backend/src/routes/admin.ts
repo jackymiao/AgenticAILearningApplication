@@ -309,4 +309,44 @@ router.patch('/submissions/:submissionId/grading', async (req: Request, res: Res
   }
 });
 
+// Delete projects (bulk delete)
+router.delete('/projects', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { codes } = req.body;
+    
+    if (!codes || !Array.isArray(codes) || codes.length === 0) {
+      res.status(400).json({ error: 'Project codes array is required' });
+      return;
+    }
+    
+    // Normalize all codes
+    const normalizedCodes = codes.map(code => normalizeProjectCode(code));
+    
+    // Check if user is super admin or owns the projects
+    const isSuperAdmin = req.session.isSuperAdmin || false;
+    let query;
+    let params;
+    
+    if (isSuperAdmin) {
+      // Super admin can delete any projects
+      query = 'DELETE FROM projects WHERE code = ANY($1::char(6)[])';
+      params = [normalizedCodes];
+    } else {
+      // Regular admin can only delete their own projects
+      query = 'DELETE FROM projects WHERE code = ANY($1::char(6)[]) AND created_by_admin_id = $2';
+      params = [normalizedCodes, req.session.adminId];
+    }
+    
+    const result = await pool.query(query, params);
+    
+    res.json({ 
+      deleted: result.rowCount || 0,
+      message: `Successfully deleted ${result.rowCount || 0} project(s)`
+    });
+  } catch (error) {
+    console.error('Delete projects error:', error);
+    res.status(500).json({ error: 'Failed to delete projects' });
+  }
+});
+
 export default router;

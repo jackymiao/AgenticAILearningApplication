@@ -40,6 +40,10 @@ export const adminApi = {
     method: 'PUT',
     body: JSON.stringify(project)
   }),
+  deleteProjects: (codes) => apiFetch('/admin/projects', {
+    method: 'DELETE',
+    body: JSON.stringify({ codes })
+  }),
   getSubmissions: (code, sort) => apiFetch(`/admin/projects/${code}/submissions?sort=${sort || 'newest'}`),
   getSubmission: (submissionId) => apiFetch(`/admin/submissions/${submissionId}`),
   updateGrading: (submissionId, adminScore, adminFeedback) => apiFetch(`/admin/submissions/${submissionId}/grading`, {
