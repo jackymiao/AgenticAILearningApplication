@@ -19,7 +19,7 @@ const structuregrader = new Agent({
   name: "StructureGrader",
   instructions: structuregraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: StructuregraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,

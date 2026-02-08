@@ -23,7 +23,7 @@ const grammargrader = new Agent({
   name: "GrammarGrader",
   instructions: grammargraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: GrammargraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,
@@ -43,7 +43,7 @@ const parser = new Agent({
   name: "Parser",
   instructions: parserInstructions,
   model: "gpt-4.1-nano",
-  outputType: ParserSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.5,
     topP: 1,
@@ -68,7 +68,7 @@ const structuregrader = new Agent({
   name: "StructureGrader",
   instructions: structuregraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: StructuregraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,
@@ -93,7 +93,7 @@ const stylegrader = new Agent({
   name: "StyleGrader",
   instructions: stylegraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: StylegraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,
@@ -118,7 +118,7 @@ const contentgrader = new Agent({
   name: "ContentGrader",
   instructions: contentgraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: ContentgraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,
@@ -143,7 +143,7 @@ const overallgrader = new Agent({
   name: "OverallGrader",
   instructions: overallgraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: OverallgraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,

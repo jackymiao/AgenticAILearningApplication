@@ -21,7 +21,7 @@ const grammargrader = new Agent({
   name: "GrammarGrader",
   instructions: grammargraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: GrammargraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,

@@ -15,7 +15,7 @@ export default function SubmissionDetail() {
   const [adminScore, setAdminScore] = useState<string>('');
   const [adminFeedback, setAdminFeedback] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [saveTimeout, setSaveTimeout] = useState<number | null>(null);
+  const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadSubmission();

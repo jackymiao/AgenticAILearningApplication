@@ -71,9 +71,13 @@ async function testAgents() {
     console.log('\n✅ SUCCESS - Result:');
     console.log(JSON.stringify(result, null, 2));
     
-    if (result.status === 'success' && result.result_json) {
-      console.log('\n📊 Score extracted:', result.score);
-      console.log('📋 Overview:', result.result_json.overview);
+    if (result.status === 'success') {
+      const successResult = result as { status: 'success'; score?: number | null; result_json?: any };
+      console.log('\n📊 Score extracted:', successResult.score);
+      if (successResult.result_json) {
+        const parsed = typeof successResult.result_json === 'string' ? JSON.parse(successResult.result_json) : successResult.result_json;
+        console.log('📋 Overview:', parsed.overview);
+      }
     }
   } catch (error: any) {
     console.log('\n❌ ERROR:');

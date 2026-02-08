@@ -19,7 +19,7 @@ const stylegrader = new Agent({
   name: "StyleGrader",
   instructions: stylegraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: StylegraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,

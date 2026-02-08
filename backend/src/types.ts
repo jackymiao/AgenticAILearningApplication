@@ -35,6 +35,13 @@ export interface Submission {
 export type ReviewCategory = 'content' | 'structure' | 'mechanics';
 export type ReviewStatus = 'success' | 'error';
 
+// Extend express-session types
+declare module 'express-session' {
+  interface SessionData {
+    isSuperAdmin: boolean;
+  }
+}
+
 export interface ReviewAttempt {
   id: string;
   project_code: string;

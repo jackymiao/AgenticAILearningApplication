@@ -18,12 +18,10 @@ export async function callAgent(agentId: string, params: AgentCallParams): Promi
     }
 
     // Agent B uses category-specific SDKs
-    if (category === 'grammar') {
+    if (category === 'mechanics') {
       return await callGrammarAgent(userName, essay, category, attemptNumber, projectCode, wordLimit, previousAttempts);
     } else if (category === 'structure') {
       return await callStructureAgent(userName, essay, category, attemptNumber, projectCode, wordLimit, previousAttempts);
-    } else if (category === 'style') {
-      return await callStyleAgent(userName, essay, category, attemptNumber, projectCode, wordLimit, previousAttempts);
     } else if (category === 'content') {
       return await callContentAgent(userName, essay, category, attemptNumber, projectCode, wordLimit, previousAttempts);
     } else {
@@ -47,15 +45,10 @@ export async function callAgent(agentId: string, params: AgentCallParams): Promi
  * Returns a placeholder ID - actual routing happens in callAgent()
  */
 export function selectAgentId(project: Project, category: ReviewCategory): string {
-  if (project.agent_mode === 'agent_a') {
-    return 'asst_preset_agent_a_001';
-  }
-  
-  // Agent B mode - return category-specific placeholder
+  // Return category-specific placeholder
   const agentIds: Record<ReviewCategory, string> = {
-    grammar: 'asst_preset_grammar_001',
+    mechanics: 'asst_preset_mechanics_001',
     structure: 'asst_preset_structure_001',
-    style: 'asst_preset_style_001',
     content: 'asst_preset_content_001'
   };
   

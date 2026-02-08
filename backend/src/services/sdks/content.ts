@@ -19,7 +19,7 @@ const contentgrader = new Agent({
   name: "ContentGrader",
   instructions: contentgraderInstructions,
   model: "gpt-4.1-nano",
-  outputType: ContentgraderSchema,
+  outputType: "text" as const,
   modelSettings: {
     temperature: 0.75,
     topP: 1,

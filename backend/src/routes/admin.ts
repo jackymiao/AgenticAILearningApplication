@@ -261,10 +261,9 @@ router.get('/submissions/:submissionId', async (req: Request, res: Response): Pr
     
     // Group by category
     const reviewHistory: Record<ReviewCategory, ReviewAttempt[]> = {
-      grammar: [],
+      content: [],
       structure: [],
-      style: [],
-      content: []
+      mechanics: []
     };
     
     reviewsResult.rows.forEach(review => {
