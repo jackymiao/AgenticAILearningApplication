@@ -54,6 +54,12 @@ const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 };
+
+console.log('🔒 CORS Configuration:');
+console.log('  Allowed Origin:', corsOptions.origin);
+console.log('  Credentials:', corsOptions.credentials);
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+
 app.use(cors(corsOptions));
 
 // Session configuration
@@ -80,6 +86,8 @@ app.use(
 // Log all requests with session info
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('  Origin:', req.get('origin'));
+  console.log('  Referer:', req.get('referer'));
   if (req.session) {
     console.log('  Session ID:', req.sessionID);
     console.log('  Admin ID:', req.session.adminId);
