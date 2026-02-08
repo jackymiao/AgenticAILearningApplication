@@ -445,7 +445,7 @@ export default function ProjectPage() {
                     }
                     className="primary"
                     data-testid="submit-review-btn"
-                    style={{ fontSize: '16px', padding: '12px 32px' }}
+                    style={{ fontSize: '16px', padding: '12px 32px', width: '280px' }}
                   >
                     {reviewLoading ? 'Processing...' : cooldownRemaining > 0 ? `Wait ${formatCooldown(cooldownRemaining)}` : tokens && tokens.reviewTokens < 1 ? 'No Review Tokens' : 'Submit for Review'}
                   </button>
@@ -460,13 +460,14 @@ export default function ProjectPage() {
                         style={{
                           background: 'linear-gradient(135deg, #E74C3C, #C0392B)',
                           color: 'white',
-                          padding: '10px 24px',
-                          fontSize: '14px',
+                          padding: '12px 32px',
+                          fontSize: '16px',
                           fontWeight: '600',
                           border: 'none',
                           borderRadius: '8px',
                           cursor: attackWaitingResult ? 'not-allowed' : 'pointer',
-                          opacity: attackWaitingResult ? 0.6 : 1
+                          opacity: attackWaitingResult ? 0.6 : 1,
+                          width: '280px'
                         }}
                       >
                         {attackWaitingResult ? '⏳ Waiting for result...' : '⚔️ Attack Another Player'}

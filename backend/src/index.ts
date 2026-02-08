@@ -115,6 +115,18 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 404 handler - must be BEFORE error handler
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.error(`❌ 404 Not Found: ${req.method} ${req.originalUrl}`);
+  console.error('  Headers:', JSON.stringify(req.headers, null, 2));
+  res.status(404).json({ 
+    error: 'Not Found',
+    path: req.originalUrl,
+    method: req.method,
+    availableRoutes: ['/api/health', '/api/auth', '/api/public', '/api/admin', '/api/game']
+  });
+});
+
 // Error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled error:', err);
