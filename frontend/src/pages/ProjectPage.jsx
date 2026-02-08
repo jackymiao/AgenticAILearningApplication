@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
-import { publicApi } from '../api/endpoints';
+import Leaderboard from '../components/Leaderboard';
+import ReviewLoadingAnimation from '../components/ReviewLoadingAnimation';
+import TokenDisplay from '../components/TokenDisplay';
+import AttackModal from '../components/AttackModal';
+import DefenseModal from '../components/DefenseModal';
+import { publicApi, gameApi } from '../api/endpoints';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 export default function ProjectPage() {
   const { code } = useParams();
@@ -10,11 +16,22 @@ export default function ProjectPage() {
   const [userNameSubmitted, setUserNameSubmitted] = useState(false);
   const [essay, setEssay] = useState('');
   const [userState, setUserState] = useState(null);
-  const [activeTab, setActiveTab] = useState('grammar');
+  const [activeTab, setActiveTab] = useState('content');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [finalScore, setFinalScore] = useState(null);
+  const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+  
+  // Game state
+  const [tokens, setTokens] = useState(null);
+  const [sessionId] = useState(() => Math.random().toString(36).substring(7));
+  const [showAttackModal, setShowAttackModal] = useState(false);
+  const [incomingAttackId, setIncomingAttackId] = useState(null);
+  const [attackWaitingResult, setAttackWaitingResult] = useState(false);
+  const [cooldownEnds, setCooldownEnds] = useState(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
 
   useEffect(() => {
@@ -43,23 +60,156 @@ export default function ProjectPage() {
       setUserState(data);
       setUserNameSubmitted(true);
       setError('');
+      
+      // Initialize player in game system
+      await initializePlayer();
     } catch (err) {
       setError(err.message);
     }
   };
+  
+  // Initialize player and get tokens
+  const initializePlayer = async () => {
+    try {
+      const playerData = await gameApi.initPlayer(code, userName);
+      setTokens({
+        reviewTokens: playerData.reviewTokens,
+        attackTokens: playerData.attackTokens,
+        shieldTokens: playerData.shieldTokens
+      });
+      
+      // Set cooldown if exists
+      if (playerData.cooldownRemaining > 0) {
+        const endsAt = Date.now() + playerData.cooldownRemaining;
+        setCooldownEnds(endsAt);
+      }
+    } catch (err) {
+      console.error('Failed to initialize player:', err);
+    }
+  };
+  
+  // WebSocket connection for real-time game events
+  useWebSocket(
+    code,
+    userNameSubmitted ? userName : null,
+    (attackId) => {
+      // Handle incoming attack
+      console.log('Incoming attack:', attackId);
+      setIncomingAttackId(attackId);
+    },
+    (updatedTokens) => {
+      // Handle token update
+      console.log('Tokens updated:', updatedTokens);
+      setTokens({
+        reviewTokens: updatedTokens.review_tokens,
+        attackTokens: updatedTokens.attack_tokens,
+        shieldTokens: updatedTokens.shield_tokens
+      });
+    },
+    (result) => {
+      // Handle attack result
+      console.log('Attack result:', result);
+      setAttackWaitingResult(false);
+      if (result.success) {
+        alert('✅ ' + result.message);
+        // Refresh tokens
+        initializePlayer();
+      } else {
+        alert('🛡️ ' + result.message);
+      }
+    }
+  );
+  
+  // Heartbeat to maintain active session
+  useEffect(() => {
+    if (!userNameSubmitted || !userName) return;
+    
+    const sendHeartbeat = async () => {
+      try {
+        await gameApi.sendHeartbeat(code, userName, sessionId);
+      } catch (err) {
+        console.error('Heartbeat failed:', err);
+      }
+    };
+    
+    // Send immediately
+    sendHeartbeat();
+    
+    // Then every 30 seconds
+    const interval = setInterval(sendHeartbeat, 30000);
+    
+    return () => clearInterval(interval);
+  }, [userNameSubmitted, userName, code, sessionId]);
+  
+  // Cooldown timer
+  useEffect(() => {
+    if (!cooldownEnds) {
+      setCooldownRemaining(0);
+      return;
+    }
+    
+    const updateCooldown = () => {
+      const remaining = Math.max(0, cooldownEnds - Date.now());
+      setCooldownRemaining(remaining);
+      
+      if (remaining === 0) {
+        setCooldownEnds(null);
+      }
+    };
+    
+    updateCooldown();
+    const interval = setInterval(updateCooldown, 1000);
+    
+    return () => clearInterval(interval);
+  }, [cooldownEnds]);
 
-  const handleRunReview = async (category) => {
+  const handleRunReview = async () => {
     setError('');
     setReviewLoading(true);
     
+    console.log('[FRONTEND] Submitting review with:');
+    console.log('  Project Code:', code);
+    console.log('  User Name:', userName);
+    console.log('  Essay length:', essay.length, 'characters');
+    console.log('  Essay word count:', essay.split(/\s+/).length, 'words');
+    console.log('  Essay preview:', essay.substring(0, 100) + '...');
+    
     try {
-      const result = await publicApi.submitReview(code, userName, essay, category);
+      const result = await publicApi.submitReview(code, userName, essay);
+      console.log('[FRONTEND] API Response:', result);
+      
+      // Clear any previous errors on success
+      setError('');
+      
+      // Update tokens from response
+      if (result.tokens) {
+        setTokens({
+          reviewTokens: result.tokens.review_tokens,
+          attackTokens: result.tokens.attack_tokens,
+          shieldTokens: result.tokens.shield_tokens
+        });
+      }
+      
+      // Set cooldown
+      if (result.cooldownMs) {
+        const endsAt = Date.now() + result.cooldownMs;
+        setCooldownEnds(endsAt);
+      }
+      
+      // Result contains { reviews: [], finalScore: number, attemptsRemaining: number }
+      if (result.finalScore !== undefined) {
+        setFinalScore(result.finalScore);
+      }
       
       // Reload user state to get updated attempts and history
       const updatedState = await publicApi.getUserState(code, userName);
       setUserState(updatedState);
       
+      // Trigger leaderboard refresh
+      setLeaderboardRefresh(prev => prev + 1);
+      
     } catch (err) {
+      console.error('[FRONTEND] Error:', err);
       setError(err.message);
     } finally {
       setReviewLoading(false);
@@ -88,6 +238,42 @@ export default function ProjectPage() {
       setSubmitLoading(false);
     }
   };
+  
+  const handleAttackClick = () => {
+    if (!tokens || tokens.attackTokens < 1) {
+      alert('You need an attack token to attack! Submit a review to gain one.');
+      return;
+    }
+    setShowAttackModal(true);
+  };
+  
+  const handleAttackInitiated = (result) => {
+    console.log('Attack initiated:', result);
+    setAttackWaitingResult(true);
+    // Modal will close itself
+  };
+  
+  const handleDefenseResponse = async (result) => {
+    console.log('Defense response:', result);
+    if (result.tokens) {
+      setTokens({
+        reviewTokens: result.tokens.review_tokens,
+        attackTokens: result.tokens.attack_tokens,
+        shieldTokens: result.tokens.shield_tokens
+      });
+    }
+    setIncomingAttackId(null);
+    
+    // Refresh player state
+    await initializePlayer();
+  };
+  
+  const formatCooldown = (ms) => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   const countWords = (text) => {
     return text.trim().split(/\s+/).filter(w => w.length > 0).length;
@@ -114,10 +300,11 @@ export default function ProjectPage() {
     );
   }
 
-  const categories = ['grammar', 'structure', 'style', 'content'];
+  const categories = ['content', 'structure', 'mechanics'];
 
   return (
     <PageContainer>
+      {reviewLoading && <ReviewLoadingAnimation />}
       <div style={{ padding: '24px 0' }}>
         {/* Project Header */}
         <section style={{ marginBottom: '32px' }}>
@@ -129,22 +316,30 @@ export default function ProjectPage() {
             <p style={{ color: '#666', marginBottom: '16px' }}>{project.description}</p>
             <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#666' }}>
               <div>Word Limit: <strong>{project.word_limit}</strong></div>
-              <div>Attempts per Category: <strong>{project.attempt_limit_per_category}</strong></div>
+              <div>Review Attempts Allowed: <strong>{project.attempt_limit_per_category}</strong></div>
             </div>
           </div>
         </section>
 
-        {/* YouTube Video */}
+        {/* YouTube Video and Leaderboard */}
         {project.youtube_url && (
           <section style={{ marginBottom: '32px' }}>
-            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
-              <iframe
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                src={project.youtube_url.replace('watch?v=', 'embed/')}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+              {/* Video */}
+              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
+                <iframe
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                  src={project.youtube_url.replace('watch?v=', 'embed/')}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              
+              {/* Leaderboard */}
+              <div>
+                <Leaderboard projectCode={code} refreshTrigger={leaderboardRefresh} />
+              </div>
             </div>
           </section>
         )}
@@ -170,6 +365,17 @@ export default function ProjectPage() {
 
         {userNameSubmitted && (
           <>
+            {/* Token Display */}
+            {tokens && (
+              <section style={{ marginBottom: '24px' }}>
+                <TokenDisplay 
+                  reviewTokens={tokens.reviewTokens}
+                  attackTokens={tokens.attackTokens}
+                  shieldTokens={tokens.shieldTokens}
+                />
+              </section>
+            )}
+            
             {/* Essay Textarea */}
             <section style={{ marginBottom: '32px' }}>
               <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
@@ -204,6 +410,112 @@ export default function ProjectPage() {
               </div>
             </section>
 
+            {/* Submit for Review Button */}
+            {!userState?.alreadySubmitted && (
+              <section style={{ marginBottom: '32px' }}>
+                <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                  <h3 style={{ marginBottom: '12px' }}>Get AI Feedback</h3>
+                  <p style={{ marginBottom: '16px', color: '#666' }}>
+                    {userState && `${userState.attemptsRemaining} review${userState.attemptsRemaining !== 1 ? 's' : ''} remaining`}
+                  </p>
+                  
+                  {error && (
+                    <div style={{ 
+                      padding: '16px', 
+                      backgroundColor: '#fff5f5', 
+                      border: '2px solid #f44336',
+                      borderRadius: '6px', 
+                      marginBottom: '16px',
+                      color: '#d32f2f',
+                      fontWeight: '500'
+                    }}>
+                      ⚠️ {error}
+                    </div>
+                  )}
+                  
+                  <button
+                    onClick={handleRunReview}
+                    disabled={
+                      reviewLoading || 
+                      !essay.trim() || 
+                      overLimit ||
+                      cooldownRemaining > 0 ||
+                      (tokens && tokens.reviewTokens < 1) ||
+                      userState?.attemptsRemaining <= 0
+                    }
+                    className="primary"
+                    data-testid="submit-review-btn"
+                    style={{ fontSize: '16px', padding: '12px 32px' }}
+                  >
+                    {reviewLoading ? 'Processing...' : cooldownRemaining > 0 ? `Wait ${formatCooldown(cooldownRemaining)}` : tokens && tokens.reviewTokens < 1 ? 'No Review Tokens' : 'Submit for Review'}
+                  </button>
+                  
+                  {/* Attack Button */}
+                  {tokens && tokens.attackTokens > 0 && (
+                    <div style={{ marginTop: '16px' }}>
+                      <button
+                        onClick={handleAttackClick}
+                        disabled={attackWaitingResult}
+                        data-testid="attack-player-btn"
+                        style={{
+                          background: 'linear-gradient(135deg, #E74C3C, #C0392B)',
+                          color: 'white',
+                          padding: '10px 24px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: attackWaitingResult ? 'not-allowed' : 'pointer',
+                          opacity: attackWaitingResult ? 0.6 : 1
+                        }}
+                      >
+                        {attackWaitingResult ? '⏳ Waiting for result...' : '⚔️ Attack Another Player'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+            
+            {/* Modals */}
+            <AttackModal
+              isOpen={showAttackModal}
+              onClose={() => setShowAttackModal(false)}
+              projectCode={code}
+              currentUserName={userName}
+              onAttack={handleAttackInitiated}
+            />
+            
+            <DefenseModal
+              attackId={incomingAttackId}
+              projectCode={code}
+              hasShield={tokens && tokens.shieldTokens > 0}
+              onDefend={handleDefenseResponse}
+              onClose={() => setIncomingAttackId(null)}
+            />
+
+            {/* Final Score Display */}
+            {finalScore !== null && (
+              <section style={{ marginBottom: '32px' }}>
+                <div style={{ 
+                  backgroundColor: 'white', 
+                  padding: '24px', 
+                  borderRadius: '8px', 
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  textAlign: 'center'
+                }}>
+                  <h3 style={{ marginBottom: '8px' }}>Overall Score</h3>
+                  <div style={{ 
+                    fontSize: '48px', 
+                    fontWeight: 'bold', 
+                    color: finalScore >= 80 ? '#4CAF50' : finalScore >= 60 ? '#ff9800' : '#f44336'
+                  }}>
+                    {finalScore}/100
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* AI Review Tabs */}
             <section style={{ marginBottom: '32px' }}>
               <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
@@ -222,28 +534,12 @@ export default function ProjectPage() {
                       }}
                     >
                       {cat}
-                      {userState && ` (${userState.attemptsRemaining[cat]} left)`}
                     </button>
                   ))}
                 </div>
                 
                 <div style={{ padding: '24px' }}>
-                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ textTransform: 'capitalize' }}>{activeTab} Review</h3>
-                    <button
-                      onClick={() => handleRunReview(activeTab)}
-                      disabled={
-                        reviewLoading || 
-                        !essay.trim() || 
-                        overLimit || 
-                        userState?.alreadySubmitted ||
-                        userState?.attemptsRemaining[activeTab] <= 0
-                      }
-                      className="primary"
-                    >
-                      {reviewLoading ? 'Processing...' : 'Run Review'}
-                    </button>
-                  </div>
+                  <h3 style={{ textTransform: 'capitalize', marginBottom: '16px' }}>{activeTab} Review</h3>
 
                   {userState?.reviewHistory[activeTab]?.length > 0 ? (
                     <div>
@@ -264,254 +560,70 @@ export default function ProjectPage() {
                           {review.status === 'success' && review.result_json && (() => {
                             try {
                               const data = review.result_json;
-                              
-                              // Calculate correct score: 100 - total deducted points
-                              const calculateScore = (breakdown) => {
-                                if (!breakdown || !Array.isArray(breakdown) || breakdown.length === 0) {
-                                  return data.score || 0;
-                                }
-                                const totalDeductions = breakdown.reduce((sum, item) => {
-                                  return sum + (item.deducted_points || 0);
-                                }, 0);
-                                return Math.max(0, 100 - totalDeductions);
-                              };
-                              
-                              const score = calculateScore(data.breakdown);
-                              const scoreColor = score >= 80 ? '#4CAF50' : '#f44336';
-                              
-                              // Parse suggestions if they come as flat array of strings
-                              let parsedSuggestions = data.suggestions || [];
-                              if (parsedSuggestions.length > 0 && typeof parsedSuggestions[0] === 'string') {
-                                // Check if it's the malformed flat array format
-                                if (parsedSuggestions[0] === '{') {
-                                  const tempSuggestions = [];
-                                  let currentObj = {};
-                                  let currentKey = null;
-                                  
-                                  for (let i = 0; i < parsedSuggestions.length; i++) {
-                                    const item = parsedSuggestions[i];
-                                    
-                                    if (item === '{') {
-                                      currentObj = {};
-                                      currentKey = null;
-                                    } else if (item === '}') {
-                                      if (Object.keys(currentObj).length > 0) {
-                                        tempSuggestions.push(currentObj);
-                                      }
-                                      currentObj = {};
-                                      currentKey = null;
-                                    } else if (currentKey === null) {
-                                      // This is a key
-                                      currentKey = item;
-                                    } else {
-                                      // This is a value
-                                      currentObj[currentKey] = item;
-                                      currentKey = null;
-                                    }
-                                  }
-                                  
-                                  parsedSuggestions = tempSuggestions;
-                                }
-                              }
+                              const score = data.score || 0;
+                              const scoreColor = score >= 80 ? '#4CAF50' : score >= 60 ? '#ff9800' : '#f44336';
                               
                               return (
                                 <>
                                   <div style={{ marginBottom: '8px', fontSize: '14px', color: '#666' }}>
                                     Attempt {review.attempt_number} - {new Date(review.created_at).toLocaleString()}
-                                    <span style={{ marginLeft: '12px', fontWeight: 'bold' }}>Score: {score}</span>
                                   </div>
                             
-                              <div>
-                                {/* Score */}
-                                <div style={{ 
-                                  padding: '12px', 
-                                  backgroundColor: scoreColor, 
-                                  color: 'white', 
-                                  borderRadius: '4px', 
-                                  marginBottom: '16px',
-                                  fontSize: '18px',
-                                  fontWeight: 'bold',
-                                  textAlign: 'center'
-                                }}>
-                                  Score: {score}/100
-                                </div>
-
-                                {/* Overview */}
-                                {data.overview && (
-                                  <div style={{ marginBottom: '16px' }}>
-                                    <h4 style={{ marginBottom: '8px' }}>Summary:</h4>
-                                    <p style={{ lineHeight: '1.6' }}>{data.overview}</p>
-                                  </div>
-                                )}
-
-                                {/* Breakdown */}
-                                {data.breakdown && Array.isArray(data.breakdown) && data.breakdown.length > 0 && (
-                                  <div style={{ marginBottom: '16px' }}>
-                                    <h4 style={{ marginBottom: '8px' }}>Breakdown:</h4>
-                                    <div style={{ paddingLeft: '12px' }}>
-                                      {data.breakdown.map((item, idx) => (
-                                        <div key={idx} style={{ 
-                                          marginBottom: '12px', 
-                                          padding: '12px', 
-                                          backgroundColor: '#fff9e6',
-                                          borderLeft: '3px solid #ff9800',
-                                          borderRadius: '4px'
-                                        }}>
-                                          <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#ff6f00' }}>
-                                            {item.category_name} (-{item.deducted_points} points)
-                                          </div>
-                                          <div style={{ color: '#666', marginBottom: '6px' }}>
-                                            {item.reason}
-                                          </div>
-                                          {item.examples && Array.isArray(item.examples) && item.examples.length > 0 && (
-                                            <div style={{ marginTop: '6px' }}>
-                                              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#999', marginBottom: '4px' }}>Examples:</div>
-                                              {item.examples.map((ex, i) => (
-                                                <div key={i} style={{ 
-                                                  fontSize: '13px', 
-                                                  fontStyle: 'italic', 
-                                                  color: '#555',
-                                                  padding: '4px 8px',
-                                                  backgroundColor: '#fff',
-                                                  borderRadius: '3px',
-                                                  marginBottom: '4px'
-                                                }}>
-                                                  "{ex}"
-                                                </div>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
+                                  <div>
+                                    {/* Score */}
+                                    <div style={{ 
+                                      padding: '12px', 
+                                      backgroundColor: scoreColor, 
+                                      color: 'white', 
+                                      borderRadius: '4px', 
+                                      marginBottom: '16px',
+                                      fontSize: '18px',
+                                      fontWeight: 'bold',
+                                      textAlign: 'center'
+                                    }}>
+                                      Score: {score}/100
                                     </div>
-                                  </div>
-                                )}
 
-                                {/* Suggestions */}
-                                {parsedSuggestions && parsedSuggestions.length > 0 && (
-                                  <div style={{ marginBottom: '16px' }}>
-                                    <h4 style={{ marginBottom: '8px' }}>Suggestions:</h4>
-                                    {parsedSuggestions.map((suggestion, idx) => {
-                                      // Handle if it's a simple string
-                                      if (typeof suggestion === 'string') {
-                                        return (
-                                          <div 
-                                            key={idx} 
-                                            style={{ 
-                                              padding: '12px', 
-                                              backgroundColor: '#f5f5f5', 
-                                              borderRadius: '4px', 
-                                              marginBottom: '8px',
-                                              borderLeft: '3px solid #2196F3'
-                                            }}
-                                          >
-                                            {suggestion}
-                                          </div>
-                                        );
-                                      }
-                                      
-                                      // Handle if it's an object (old format)
-                                      return (
-                                        <div 
-                                          key={idx} 
-                                          style={{ 
-                                            padding: '12px', 
-                                            backgroundColor: '#f5f5f5', 
-                                            borderRadius: '4px', 
-                                            marginBottom: '8px',
-                                            borderLeft: '3px solid #2196F3'
-                                          }}
-                                        >
-                                          {suggestion.title && <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{suggestion.title}</div>}
-                                          {suggestion.tip && <div style={{ marginBottom: '4px' }}>{suggestion.tip}</div>}
-                                          {suggestion.evidence && (
-                                            <div style={{ fontStyle: 'italic', color: '#666', marginBottom: '4px' }}>
-                                              <strong>Evidence:</strong>
-                                              {Array.isArray(suggestion.evidence) ? (
-                                                suggestion.evidence.map((ev, i) => (
-                                                  <div key={i} style={{ marginTop: '4px', paddingLeft: '8px' }}>
-                                                    {typeof ev === 'object' ? (
-                                                      <>
-                                                        "{ev.original}"
-                                                        {ev.location && (
-                                                          <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>
-                                                            (Para {ev.location.paragraph}{ev.location.sentence ? `, Sent ${ev.location.sentence}` : ''})
-                                                          </span>
-                                                        )}
-                                                      </>
-                                                    ) : (
-                                                      <span>{String(ev)}</span>
-                                                    )}
-                                                  </div>
-                                                ))
-                                              ) : (
-                                                <span> {String(suggestion.evidence)}</span>
-                                              )}
-                                            </div>
-                                          )}
-                                          {suggestion.actions && (
-                                            <div style={{ color: '#4CAF50', marginTop: '8px' }}>
-                                              <strong>Action:</strong>
-                                              {Array.isArray(suggestion.actions) ? (
-                                                suggestion.actions.map((action, i) => (
-                                                  <div key={i} style={{ marginTop: '4px' }}>
-                                                    {typeof action === 'object' ? action.action : String(action)}
-                                                  </div>
-                                                ))
-                                              ) : (
-                                                <span> {String(suggestion.actions)}</span>
-                                              )}
-                                            </div>
-                                          )}
-                                          {suggestion.fixes && (
-                                            <div style={{ color: '#4CAF50', marginTop: '8px' }}>
-                                              <strong>Fixes:</strong>
-                                              {Array.isArray(suggestion.fixes) ? (
-                                                suggestion.fixes.map((fix, i) => (
-                                                  <div key={i} style={{ marginTop: '4px' }}>
-                                                    {typeof fix === 'object' ? fix.corrected : String(fix)}
-                                                  </div>
-                                                ))
-                                              ) : (
-                                                <span> {String(suggestion.fixes)}</span>
-                                              )}
-                                            </div>
-                                          )}
-                                          {suggestion.severity && (
-                                            <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                                              Severity: {suggestion.severity}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-
-                                {/* Sentence Fixes */}
-                                {data.sentence_fixes && data.sentence_fixes.length > 0 && (
-                                  <div style={{ marginBottom: '16px' }}>
-                                    <h4 style={{ marginBottom: '8px' }}>Sentence Fixes:</h4>
-                                    {data.sentence_fixes.map((fix, idx) => (
-                                      <div key={idx} style={{ marginBottom: '12px', padding: '12px', backgroundColor: '#fff3e0', borderRadius: '4px' }}>
-                                        <div style={{ color: '#f44336', marginBottom: '4px' }}>
-                                          <strong>Original:</strong> {fix.original}
-                                        </div>
-                                        <div style={{ color: '#4CAF50', marginBottom: '4px' }}>
-                                          <strong>Improved:</strong> {fix.improved}
-                                        </div>
-                                        {fix.issue && (
-                                          <div style={{ color: '#666', fontSize: '14px' }}>
-                                            <strong>Issue:</strong> {fix.issue}
-                                          </div>
-                                        )}
+                                    {/* What's Good */}
+                                    {data.overview?.good && data.overview.good.length > 0 && (
+                                      <div style={{ marginBottom: '16px' }}>
+                                        <h4 style={{ marginBottom: '8px', color: '#4CAF50' }}>✓ Strengths:</h4>
+                                        <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
+                                          {data.overview.good.map((item, idx) => (
+                                            <li key={idx} style={{ marginBottom: '6px', color: '#333' }}>{item}</li>
+                                          ))}
+                                        </ul>
                                       </div>
-                                    ))}
+                                    )}
+
+                                    {/* What to Improve */}
+                                    {data.overview?.improve && data.overview.improve.length > 0 && (
+                                      <div style={{ marginBottom: '16px' }}>
+                                        <h4 style={{ marginBottom: '8px', color: '#ff9800' }}>⚠ Areas for Improvement:</h4>
+                                        <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
+                                          {data.overview.improve.map((item, idx) => (
+                                            <li key={idx} style={{ marginBottom: '6px', color: '#333' }}>{item}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+
+                                    {/* Suggestions */}
+                                    {data.suggestions && data.suggestions.length > 0 && (
+                                      <div style={{ marginBottom: '16px' }}>
+                                        <h4 style={{ marginBottom: '8px', color: '#2196F3' }}>💡 Suggestions:</h4>
+                                        <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
+                                          {data.suggestions.map((suggestion, idx) => (
+                                            <li key={idx} style={{ marginBottom: '6px', color: '#333' }}>
+                                              {typeof suggestion === 'string' ? suggestion : JSON.stringify(suggestion)}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </>
-                            );
+                                </>
+                              );
                             } catch (error) {
                               console.error('Error rendering review:', error);
                               return (
@@ -530,7 +642,7 @@ export default function ProjectPage() {
                     </div>
                   ) : (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                      No reviews yet. Click "Run Review" to get feedback.
+                      No reviews yet. Click "Submit for Review" to get feedback.
                     </div>
                   )}
                 </div>
@@ -555,12 +667,6 @@ export default function ProjectPage() {
                   </button>
                 </div>
               </section>
-            )}
-
-            {error && (
-              <div className="error" style={{ padding: '16px', backgroundColor: '#fff5f5', borderRadius: '6px', textAlign: 'center' }}>
-                {error}
-              </div>
             )}
           </>
         )}

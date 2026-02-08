@@ -14,8 +14,7 @@ export default function CreateProject() {
     description: 'Please review the video and submit your essay below. Make sure to stay within the word limit and use the AI review features to improve your work before final submission.',
     youtubeUrl: '',
     wordLimit: 150,
-    attemptLimitPerCategory: 3,
-    agentMode: 'agent_a'
+    attemptLimitPerCategory: 3
   });
 
   const handleChange = (e) => {
@@ -28,10 +27,14 @@ export default function CreateProject() {
     setError('');
     setLoading(true);
 
+    console.log('[CREATE PROJECT FORM] Submitting with data:', formData);
+
     try {
-      await adminApi.createProject(formData);
+      const result = await adminApi.createProject(formData);
+      console.log('[CREATE PROJECT FORM] Success:', result);
       navigate('/admin');
     } catch (err) {
+      console.error('[CREATE PROJECT FORM] Error:', err);
       setError(err.message);
       setLoading(false);
     }
@@ -119,22 +122,6 @@ export default function CreateProject() {
                   min={1}
                   required
                 />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label>AI Mode *</label>
-              <select
-                name="agentMode"
-                value={formData.agentMode}
-                onChange={handleChange}
-                required
-              >
-                <option value="agent_a">Agent A (Single agent for all categories)</option>
-                <option value="agent_b">Agent B (Separate agents per category)</option>
-              </select>
-              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                The system will use preset Agent Builder SDKs based on your selection
               </div>
             </div>
 

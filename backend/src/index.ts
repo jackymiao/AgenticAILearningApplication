@@ -22,10 +22,14 @@ import session from 'express-session';
 import pgSession from 'connect-pg-simple';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import pool from './db/index.js';
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
+import gameRoutes from './routes/game.js';
+import testRoutes from './routes/test.js';
+import { setupWebSocketServer } from './websocket.js';
 
 dotenv.config();
 
@@ -73,10 +77,22 @@ app.use(
   })
 );
 
+// Log all requests with session info
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  if (req.session) {
+    console.log('  Session ID:', req.sessionID);
+    console.log('  Admin ID:', req.session.adminId);
+  }
+  next();
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/game', gameRoutes);
+app.use('/api/test', testRoutes);
 
 // Root route for debugging
 app.get('/', (req: Request, res: Response) => {
@@ -109,10 +125,19 @@ process.on('uncaughtException', (error) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+const httpServer = createServer(app);
+
+// Setup WebSocket server
+const wsHelpers = setupWebSocketServer(httpServer);
+
+// Make WebSocket helpers available to routes via app.locals
+app.locals.ws = wsHelpers;
+
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔌 WebSocket server ready on ws://localhost:${PORT}/ws`);
 });
 
 // Set server timeout
-server.timeout = 300000; // 5 minutes
+httpServer.timeout = 300000; // 5 minutes

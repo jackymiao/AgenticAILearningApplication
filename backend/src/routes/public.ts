@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import pool, { normalizeProjectCode, normalizeUserName } from '../db/index.js';
-import { callAgent, selectAgentId } from '../services/agentBuilder.js';
+import { runWorkflow } from '../sdk/reviewSdk.js';
 import type { Project, ReviewAttempt, ReviewCategory, UserState } from '../types.js';
 
 const router = express.Router();
@@ -64,45 +64,36 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
     
     const limit = projectResult.rows[0].attempt_limit_per_category;
     
-    // Get attempt counts per category
-    const attemptsResult = await pool.query<{ category: ReviewCategory; count: number }>(
-      `SELECT category, COUNT(*)::int as count
+    // Count total review attempts (global, not per category)
+    const attemptsResult = await pool.query<{ count: number }>(
+      `SELECT COUNT(DISTINCT attempt_number)::int as count
        FROM review_attempts
-       WHERE project_code = $1 AND user_name_norm = $2
-       GROUP BY category`,
+       WHERE project_code = $1 AND user_name_norm = $2`,
       [code, userNameNorm]
     );
     
-    const attemptCounts: Partial<Record<ReviewCategory, number>> = {};
-    attemptsResult.rows.forEach(row => {
-      attemptCounts[row.category] = row.count;
-    });
-    
-    // Calculate remaining attempts
-    const categories: ReviewCategory[] = ['grammar', 'structure', 'style', 'content'];
-    const attemptsRemaining: Record<ReviewCategory, number> = {} as Record<ReviewCategory, number>;
-    categories.forEach(cat => {
-      attemptsRemaining[cat] = limit - (attemptCounts[cat] || 0);
-    });
+    const totalAttempts = attemptsResult.rows[0]?.count || 0;
+    const attemptsRemaining = limit - totalAttempts;
     
     // Get review history grouped by category (most recent first)
     const historyResult = await pool.query<ReviewAttempt>(
       `SELECT id, category, attempt_number, status, score, result_json, error_message, created_at
        FROM review_attempts
        WHERE project_code = $1 AND user_name_norm = $2
-       ORDER BY category, attempt_number DESC`,
+       ORDER BY attempt_number DESC, category`,
       [code, userNameNorm]
     );
     
     const reviewHistory: Record<ReviewCategory, ReviewAttempt[]> = {
-      grammar: [],
+      content: [],
       structure: [],
-      style: [],
-      content: []
+      mechanics: []
     };
     
     historyResult.rows.forEach(row => {
-      reviewHistory[row.category].push(row);
+      if (reviewHistory[row.category]) {
+        reviewHistory[row.category].push(row);
+      }
     });
     
     const userState: UserState = {
@@ -118,20 +109,14 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
   }
 });
 
-// Submit a review request
+// Submit a review request - now reviews all three categories at once
 router.post('/projects/:code/reviews', async (req: Request, res: Response): Promise<void> => {
   try {
     const code = normalizeProjectCode(req.params.code);
-    const { userName, essay, category } = req.body;
+    const { userName, essay } = req.body;
     
-    if (!userName || !essay || !category) {
-      res.status(400).json({ error: 'userName, essay, and category are required' });
-      return;
-    }
-    
-    const validCategories: ReviewCategory[] = ['grammar', 'structure', 'style', 'content'];
-    if (!validCategories.includes(category)) {
-      res.status(400).json({ error: 'Invalid category' });
+    if (!userName || !essay) {
+      res.status(400).json({ error: 'userName and essay are required' });
       return;
     }
     
@@ -148,6 +133,47 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       return;
     }
     
+    // Check player state and tokens
+    const playerResult = await pool.query(
+      `SELECT review_tokens, attack_tokens, last_review_at 
+       FROM player_state 
+       WHERE project_code = $1 AND user_name_norm = $2`,
+      [code, userNameNorm]
+    );
+    
+    if (playerResult.rows.length === 0) {
+      res.status(400).json({ error: 'Player state not initialized' });
+      return;
+    }
+    
+    const playerState = playerResult.rows[0];
+    
+    // Check if has review tokens
+    if (playerState.review_tokens < 1) {
+      res.status(403).json({ 
+        error: 'No review tokens available',
+        reviewTokens: 0
+      });
+      return;
+    }
+    
+    // Check cooldown (configurable, default 2 minutes, 10 seconds for E2E tests)
+    if (playerState.last_review_at) {
+      const lastReviewTime = new Date(playerState.last_review_at).getTime();
+      const now = Date.now();
+      const elapsed = now - lastReviewTime;
+      const cooldownMs = parseInt(process.env.REVIEW_COOLDOWN_MS || '120000', 10);
+      
+      if (elapsed < cooldownMs) {
+        const remaining = Math.ceil((cooldownMs - elapsed) / 1000);
+        res.status(429).json({ 
+          error: `Please wait ${remaining} seconds before submitting another review`,
+          cooldownRemaining: cooldownMs - elapsed
+        });
+        return;
+      }
+    }
+    
     // Get project configuration
     const projectResult = await pool.query<Project>(
       `SELECT * FROM projects WHERE code = $1`,
@@ -161,19 +187,19 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     
     const project = projectResult.rows[0];
     
-    // Count existing attempts for this category
+    // Count total review attempts (not per category anymore)
     const countResult = await pool.query<{ count: number }>(
-      `SELECT COUNT(*)::int as count
+      `SELECT COUNT(DISTINCT attempt_number)::int as count
        FROM review_attempts
-       WHERE project_code = $1 AND user_name_norm = $2 AND category = $3`,
-      [code, userNameNorm, category]
+       WHERE project_code = $1 AND user_name_norm = $2`,
+      [code, userNameNorm]
     );
     
     const attemptCount = countResult.rows[0].count;
     
     if (attemptCount >= project.attempt_limit_per_category) {
       res.status(403).json({ 
-        error: `You have reached the attempt limit for ${category} reviews`,
+        error: `You have reached the attempt limit for reviews`,
         attemptsRemaining: 0
       });
       return;
@@ -181,103 +207,180 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     
     const attemptNumber = attemptCount + 1;
     
-    // Fetch previous attempt for this category (for context)
-    const previousAttemptsResult = await pool.query<ReviewAttempt>(
-      `SELECT essay_snapshot, score, result_json
+    // Fetch previous attempt for context (from last attempt number across all categories)
+    const previousEssayResult = await pool.query<ReviewAttempt>(
+      `SELECT essay_snapshot
        FROM review_attempts
-       WHERE project_code = $1 AND user_name_norm = $2 AND category = $3
-       ORDER BY attempt_number DESC
+       WHERE project_code = $1 AND user_name_norm = $2 AND attempt_number = $3
        LIMIT 1`,
-      [code, userNameNorm, category]
+      [code, userNameNorm, attemptCount]
     );
     
-    const previousAttempts = previousAttemptsResult.rows;
+    const previousEssay = previousEssayResult.rows.length > 0 
+      ? previousEssayResult.rows[0].essay_snapshot 
+      : null;
     
-    // Select the correct agent ID
-    const agentId = selectAgentId(project, category);
+    // Prepare input for SDK
+    let sdkInput = `<<<CURRENT_START>>>\n${essay}\n<<<CURRENT_END>>>`;
+    if (previousEssay) {
+      sdkInput = `<<<PREVIOUS_START>>>\n${previousEssay}\n<<<PREVIOUS_END>>>\n` + sdkInput;
+    }
     
-    // Call the agent with retry logic
-    let agentResult: any;
-    const maxRetries = 2;
-    let lastError: string | undefined;
+    // Call SDK to get review (or use mock in E2E test mode)
+    let sdkResult: any;
     
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const isE2ETest = process.env.E2E_TEST === '1';
+    
+    if (isE2ETest) {
+      console.log('[REVIEW] E2E_TEST mode - using mock AI result');
+      // Mock AI result for E2E testing
+      sdkResult = {
+        final_score: 88,
+        details: {
+          content: {
+            score: 22,
+            overview_good: ['Clear thesis statement', 'Strong supporting evidence'],
+            overview_improve: ['Could expand on counterarguments'],
+            suggestions: ['Add more examples in paragraph 3']
+          },
+          structure: {
+            score: 22,
+            overview_good: ['Logical flow', 'Good transitions'],
+            overview_improve: ['Conclusion could be stronger'],
+            suggestions: ['Rework final paragraph']
+          },
+          mechanics: {
+            score: 22,
+            overview_good: ['Few grammatical errors', 'Proper citations'],
+            overview_improve: ['Some punctuation issues'],
+            suggestions: ['Review comma usage']
+          }
+        }
+      };
+    } else {
       try {
-        agentResult = await callAgent(agentId, {
+        console.log('[REVIEW] Calling SDK with input length:', sdkInput.length);
+        sdkResult = await runWorkflow({ input_as_text: sdkInput });
+        console.log('[REVIEW] SDK Result:', JSON.stringify(sdkResult, null, 2));
+      } catch (error) {
+        console.error('[REVIEW] Error calling SDK:', error);
+        res.status(500).json({ 
+          error: 'Failed to process review request',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+        return;
+      }
+    }
+    
+    // Check if SDK returned valid result
+    if (!sdkResult) {
+      console.error('[REVIEW] SDK returned null/undefined');
+      res.status(500).json({ 
+        error: 'Failed to process review request',
+        details: 'SDK returned no result'
+      });
+      return;
+    }
+    
+    // Check if guardrail blocked the request
+    if (sdkResult && sdkResult.code === 'INVALID_REQUEST') {
+      res.status(400).json({ 
+        error: sdkResult.message || 'Invalid request'
+      });
+      return;
+    }
+    
+    // Check if details exist
+    if (!sdkResult.details) {
+      console.error('[REVIEW] SDK result missing details:', sdkResult);
+      res.status(500).json({ 
+        error: 'Failed to process review request',
+        details: 'SDK result missing category details'
+      });
+      return;
+    }
+    
+    // Extract results for each category
+    const categories: ReviewCategory[] = ['content', 'structure', 'mechanics'];
+    const savedAttempts: ReviewAttempt[] = [];
+    
+    console.log('[REVIEW] sdkResult.details type:', typeof sdkResult.details);
+    console.log('[REVIEW] sdkResult.details keys:', Object.keys(sdkResult.details || {}));
+    
+    for (const category of categories) {
+      const categoryData = sdkResult.details[category];
+      
+      if (!categoryData) {
+        console.error(`[REVIEW] Missing category data for: ${category}`);
+        console.error(`[REVIEW] Available keys:`, Object.keys(sdkResult.details));
+        continue;
+      }
+      
+      console.log(`[REVIEW] Processing ${category}:`, JSON.stringify(categoryData, null, 2));
+      
+      // Parse the category feedback - SDK returns overview_good, overview_improve, suggestions
+      const result_json = {
+        score: categoryData.score || 0,
+        overview: {
+          good: categoryData.overview_good || [],
+          improve: categoryData.overview_improve || []
+        },
+        suggestions: categoryData.suggestions || []
+      };
+      
+      // Save each category as a separate review attempt
+      const insertResult = await pool.query<ReviewAttempt>(
+        `INSERT INTO review_attempts 
+         (project_code, user_name, user_name_norm, category, attempt_number, 
+          essay_snapshot, status, score, result_json, final_score)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING id, category, attempt_number, status, score, result_json, error_message, created_at`,
+        [
+          code,
           userName,
-          essay,
+          userNameNorm,
           category,
           attemptNumber,
-          projectCode: code,
-          wordLimit: project.word_limit,
-          previousAttempts: previousAttempts
-        });
-      } catch (error) {
-        console.error(`Error calling agent (attempt ${attempt}/${maxRetries}):`, error);
-        agentResult = {
-          status: 'error',
-          error_message: error instanceof Error ? error.message : 'Unknown error calling agent'
-        };
-      }
+          essay,
+          'success',
+          categoryData.score || 0,
+          JSON.stringify(result_json),
+          sdkResult.final_score // Store the final score from SDK
+        ]
+      );
       
-      // If successful, break out of retry loop
-      if (agentResult.status === 'success') {
-        break;
-      }
-      
-      // Store the error message
-      lastError = agentResult.error_message || 'Unknown error';
-      
-      // If this was the last attempt, don't wait
-      if (attempt < maxRetries) {
-        console.log(`Agent call attempt ${attempt} failed, retrying in 2 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
-      } else {
-        console.log(`Agent call failed after ${maxRetries} attempts`);
-      }
+      savedAttempts.push(insertResult.rows[0]);
     }
     
-    // If still failed after retries, use the last error
-    if (agentResult.status === 'error') {
-      agentResult.error_message = `Failed after ${maxRetries} attempts: ${lastError}`;
-    }
-    
-    // Save the review attempt
-    const insertResult = await pool.query<ReviewAttempt>(
-      `INSERT INTO review_attempts 
-       (project_code, user_name, user_name_norm, category, attempt_number, 
-        essay_snapshot, status, score, result_json, error_message)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, status, score, result_json, error_message, created_at`,
-      [
-        code,
-        userName,
-        userNameNorm,
-        category,
-        attemptNumber,
-        essay,
-        agentResult.status,
-        agentResult.score,
-        agentResult.result_json ? JSON.stringify(agentResult.result_json) : null,
-        agentResult.error_message || null
-      ]
+    // Update player state: deduct review token, add attack token (max 1), update last_review_at
+    await pool.query(
+      `UPDATE player_state 
+       SET review_tokens = review_tokens - 1,
+           attack_tokens = LEAST(attack_tokens + 1, 1),
+           last_review_at = NOW(),
+           updated_at = NOW()
+       WHERE project_code = $1 AND user_name_norm = $2`,
+      [code, userNameNorm]
     );
     
-    const savedAttempt = insertResult.rows[0];
+    // Get updated player state
+    const updatedPlayerResult = await pool.query(
+      `SELECT review_tokens, attack_tokens, shield_tokens 
+       FROM player_state 
+       WHERE project_code = $1 AND user_name_norm = $2`,
+      [code, userNameNorm]
+    );
+    
+    const updatedTokens = updatedPlayerResult.rows[0];
+    
     const attemptsRemaining = project.attempt_limit_per_category - attemptNumber;
     
-    // Debug: Log what we're sending to frontend
-    console.log('Sending to frontend:', JSON.stringify({
-      review: {
-        ...savedAttempt,
-        result_json: savedAttempt.result_json
-      },
-      attemptsRemaining
-    }, null, 2));
-    
     res.json({
-      review: savedAttempt,
-      attemptsRemaining
+      reviews: savedAttempts,
+      finalScore: sdkResult.final_score || 0,
+      attemptsRemaining,
+      tokens: updatedTokens,
+      cooldownMs: 2 * 60 * 1000 // 2 minutes
     });
     
   } catch (error) {
@@ -334,6 +437,50 @@ router.post('/projects/:code/submissions/final', async (req: Request, res: Respo
     }
     console.error('Final submission error:', error);
     res.status(500).json({ error: 'Failed to submit essay' });
+  }
+});
+
+// Get leaderboard for a project (top 3 highest scores)
+router.get('/projects/:code/leaderboard', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    
+    // Verify project exists
+    const projectResult = await pool.query(
+      'SELECT code FROM projects WHERE code = $1',
+      [code]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+    
+    // Get top 3 users by their highest final_score
+    const leaderboardResult = await pool.query<{
+      user_name: string;
+      highest_score: number;
+    }>(
+      `SELECT user_name, MAX(final_score) as highest_score
+       FROM review_attempts
+       WHERE project_code = $1 AND final_score IS NOT NULL
+       GROUP BY user_name
+       ORDER BY highest_score DESC
+       LIMIT 3`,
+      [code]
+    );
+    
+    // Format response with rank
+    const leaderboard = leaderboardResult.rows.map((row, index) => ({
+      rank: index + 1,
+      userName: row.user_name,
+      score: row.highest_score
+    }));
+    
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 });
 

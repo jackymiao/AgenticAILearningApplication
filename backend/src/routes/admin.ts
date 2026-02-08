@@ -69,63 +69,74 @@ router.get('/projects/:code', async (req: Request, res: Response): Promise<void>
 // Create project
 router.post('/projects', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('[CREATE PROJECT] Request body:', req.body);
+    console.log('[CREATE PROJECT] Session adminId:', req.session.adminId);
+    
     const {
       code,
       title,
       description,
       youtubeUrl,
       wordLimit,
-      attemptLimitPerCategory,
-      agentMode
+      attemptLimitPerCategory
     } = req.body;
     
     // Validate required fields
-    if (!code || !title || !description || !agentMode) {
+    if (!code || !title || !description) {
+      console.error('[CREATE PROJECT] Missing required fields');
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
     
     // Validate code format
     if (!/^[A-Z0-9]{6}$/i.test(code)) {
+      console.error('[CREATE PROJECT] Invalid code format:', code);
       res.status(400).json({ error: 'Project code must be exactly 6 alphanumeric characters' });
-      return;
-    }
-    
-    // Validate agent mode
-    if (!['agent_a', 'agent_b'].includes(agentMode)) {
-      res.status(400).json({ error: 'Agent mode must be either agent_a or agent_b' });
       return;
     }
     
     const codeNorm = normalizeProjectCode(code);
     
+    console.log('[CREATE PROJECT] Inserting with params:', {
+      codeNorm,
+      title,
+      description,
+      youtubeUrl: youtubeUrl || null,
+      wordLimit: Number(wordLimit) || 150,
+      attemptLimitPerCategory: Number(attemptLimitPerCategory) || 3,
+      adminId: req.session.adminId
+    });
+    
     const result = await pool.query<Project>(
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
-        agent_mode, created_by_admin_id
+        created_by_admin_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         codeNorm,
         title,
         description,
         youtubeUrl || null,
-        wordLimit || 150,
-        attemptLimitPerCategory || 3,
-        agentMode,
+        Number(wordLimit) || 150,
+        Number(attemptLimitPerCategory) || 3,
         req.session.adminId
       ]
     );
     
+    console.log('[CREATE PROJECT] Success:', result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (error: any) {
+    console.error('[CREATE PROJECT] Error:', error);
+    console.error('[CREATE PROJECT] Error code:', error.code);
+    console.error('[CREATE PROJECT] Error detail:', error.detail);
+    
     if (error.code === '23505') { // Unique constraint violation
       res.status(409).json({ error: 'Project code already exists' });
       return;
     }
-    console.error('Create project error:', error);
-    res.status(500).json({ error: 'Failed to create project' });
+    res.status(500).json({ error: 'Failed to create project', details: error.message });
   }
 });
 
@@ -138,15 +149,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
       description,
       youtubeUrl,
       wordLimit,
-      attemptLimitPerCategory,
-      agentMode
+      attemptLimitPerCategory
     } = req.body;
-    
-    // Validate agent mode
-    if (agentMode && !['agent_a', 'agent_b'].includes(agentMode)) {
-      res.status(400).json({ error: 'Agent mode must be either agent_a or agent_b' });
-      return;
-    }
     
     const result = await pool.query<Project>(
       `UPDATE projects
@@ -155,7 +159,6 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
            youtube_url = $4,
            word_limit = $5,
            attempt_limit_per_category = $6,
-           agent_mode = $7,
            updated_at = NOW()
        WHERE code = $1
        RETURNING *`,
@@ -165,8 +168,7 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
         description,
         youtubeUrl || null,
         wordLimit,
-        attemptLimitPerCategory,
-        agentMode
+        attemptLimitPerCategory
       ]
     );
     

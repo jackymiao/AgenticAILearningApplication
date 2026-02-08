@@ -24,8 +24,7 @@ export default function EditProject() {
         description: data.description,
         youtubeUrl: data.youtube_url || '',
         wordLimit: data.word_limit,
-        attemptLimitPerCategory: data.attempt_limit_per_category,
-        agentMode: data.agent_mode
+        attemptLimitPerCategory: data.attempt_limit_per_category
       });
       setLoading(false);
     } catch (err) {
@@ -143,22 +142,6 @@ export default function EditProject() {
                   min={1}
                   required
                 />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label>AI Mode *</label>
-              <select
-                name="agentMode"
-                value={formData.agentMode}
-                onChange={handleChange}
-                required
-              >
-                <option value="agent_a">Agent A (Single agent for all categories)</option>
-                <option value="agent_b">Agent B (Separate agents per category)</option>
-              </select>
-              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                The system will use preset Agent Builder SDKs based on your selection
               </div>
             </div>
 

@@ -1,0 +1,18 @@
+{
+  "name": "agentic-ai-learning-e2e",
+  "version": "1.0.0",
+  "description": "E2E tests for Agentic AI Learning Platform",
+  "type": "module",
+  "scripts": {
+    "e2e:seed": "node e2e/seed.mjs",
+    "e2e:test": "E2E_TEST=1 REVIEW_COOLDOWN_MS=10000 node e2e/game-attack.spec.mjs",
+    "e2e:all": "npm run e2e:seed && E2E_TEST=1 REVIEW_COOLDOWN_MS=10000 node e2e/game-attack.spec.mjs",
+    "e2e:debug": "HEADLESS=false E2E_TEST=1 REVIEW_COOLDOWN_MS=10000 node e2e/game-attack.spec.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "node-fetch": "^2.7.0",
+    "pg": "^8.18.0",
+    "puppeteer": "^23.11.1"
+  }
+}

@@ -15,7 +15,6 @@ export interface Project {
   youtube_url: string | null;
   word_limit: number;
   attempt_limit_per_category: number;
-  agent_mode: 'agent_a' | 'agent_b';
   created_by_admin_id: string | null;
   created_at: Date;
   updated_at: Date;
@@ -33,7 +32,7 @@ export interface Submission {
   updated_at: Date;
 }
 
-export type ReviewCategory = 'grammar' | 'structure' | 'style' | 'content';
+export type ReviewCategory = 'content' | 'structure' | 'mechanics';
 export type ReviewStatus = 'success' | 'error';
 
 export interface ReviewAttempt {
@@ -54,7 +53,7 @@ export interface ReviewAttempt {
 
 export interface UserState {
   alreadySubmitted: boolean;
-  attemptsRemaining: Record<ReviewCategory, number>;
+  attemptsRemaining: number;
   reviewHistory: Record<ReviewCategory, ReviewAttempt[]>;
 }
 
