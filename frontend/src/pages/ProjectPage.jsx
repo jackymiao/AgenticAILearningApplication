@@ -299,15 +299,23 @@ export default function ProjectPage() {
       alert('Essay submitted successfully!');
       
       // Check if feedback is enabled and user hasn't submitted yet
+      console.log('[FEEDBACK DEBUG] project.enable_feedback:', project?.enable_feedback);
       if (project?.enable_feedback) {
         try {
-          const feedbackCheck = await publicApi.checkFeedback(code, userName, essay);
+          console.log('[FEEDBACK DEBUG] Checking feedback status...');
+          const feedbackCheck = await publicApi.checkFeedback(code, userName);
+          console.log('[FEEDBACK DEBUG] feedbackCheck:', feedbackCheck);
           if (!feedbackCheck.hasSubmitted) {
+            console.log('[FEEDBACK DEBUG] Showing feedback modal');
             setShowFeedbackModal(true);
+          } else {
+            console.log('[FEEDBACK DEBUG] User already submitted feedback');
           }
         } catch (err) {
-          console.error('Failed to check feedback status:', err);
+          console.error('[FEEDBACK DEBUG] Failed to check feedback status:', err);
         }
+      } else {
+        console.log('[FEEDBACK DEBUG] Feedback not enabled for this project');
       }
     } catch (err) {
       setError(err.message);

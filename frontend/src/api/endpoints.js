@@ -36,9 +36,9 @@ export const publicApi = {
     body: JSON.stringify({ userName, essay })
   }),
   getLeaderboard: (code) => apiFetch(`/public/projects/${code}/leaderboard`),
-  checkFeedback: (code, userName, essay) => apiFetch(`/public/${code}/feedback/check`, {
+  checkFeedback: (code, userName) => apiFetch(`/public/${code}/feedback/check`, {
     method: 'POST',
-    body: JSON.stringify({ userName, essay })
+    body: JSON.stringify({ userName })
   }),
   submitFeedback: (code, userName, essay, contentRating, systemDesignRating, responseQualityRating, comment) => 
     apiFetch(`/public/${code}/feedback/submit`, {
