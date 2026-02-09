@@ -9,7 +9,7 @@ export default function SubmissionDetail() {
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('grammar');
+  const [activeTab, setActiveTab] = useState('content');
   const [expandedReviews, setExpandedReviews] = useState({});
   
   const [adminScore, setAdminScore] = useState<string>('');
@@ -102,7 +102,7 @@ export default function SubmissionDetail() {
     );
   }
 
-  const categories = ['grammar', 'structure', 'style', 'content'];
+  const categories = ['content', 'structure', 'mechanics'];
 
   return (
     <PageContainer>

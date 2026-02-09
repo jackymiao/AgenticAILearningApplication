@@ -13,12 +13,14 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const API_BASE = import.meta.env.VITE_API_BASE || '/api';
       
+      console.log('[WS] API_BASE:', API_BASE);
+      
       // Determine WebSocket URL based on API_BASE
       let wsUrl;
-      if (API_BASE.startsWith('http')) {
-        // Production: Use backend URL
+      if (API_BASE.startsWith('http://') || API_BASE.startsWith('https://')) {
+        // Production: Use backend URL (VITE_API_BASE is full URL like https://backend.com/api)
         const backendUrl = new URL(API_BASE);
-        wsUrl = `${protocol}//${backendUrl.host}/ws`;
+        wsUrl = `${protocol}//${backendUrl.hostname}${backendUrl.port ? ':' + backendUrl.port : ''}/ws`;
       } else {
         // Development: Use localhost:3000
         wsUrl = `${protocol}//${window.location.hostname}:3000/ws`;
