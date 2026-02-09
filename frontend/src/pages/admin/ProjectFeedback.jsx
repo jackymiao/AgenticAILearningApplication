@@ -97,7 +97,7 @@ export default function ProjectFeedback() {
               Feedback collection is not enabled for this project.
             </p>
             <Link 
-              to={`/admin/projects/${code}/submissions`}
+              to={`/admin/projects/${code}`}
               style={{
                 display: 'inline-block',
                 padding: '8px 16px',
@@ -129,7 +129,7 @@ export default function ProjectFeedback() {
             </div>
           </div>
           <Link 
-            to={`/admin/projects/${code}/submissions`}
+            to={`/admin/projects/${code}`}
             style={{
               padding: '8px 16px',
               backgroundColor: '#0066cc',

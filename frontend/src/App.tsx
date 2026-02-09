@@ -9,9 +9,9 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CreateProject from './pages/admin/CreateProject';
 import EditProject from './pages/admin/EditProject';
-import SubmissionsList from './pages/admin/SubmissionsList';
+import SubmissionsList from './pages/admin/SubmissionsList.jsx';
 import SubmissionDetail from './pages/admin/SubmissionDetail';
-import ProjectFeedback from './pages/admin/ProjectFeedback';
+import ProjectFeedback from './pages/admin/ProjectFeedback.jsx';
 import HelpPage from './pages/HelpPage';
 import { ReactNode } from 'react';
 
@@ -64,7 +64,7 @@ function AppRoutes() {
             <SubmissionDetail />
           </ProtectedRoute>
         } />
-        <Route path="/admin/projects/:code/submissions" element={
+        <Route path="/admin/projects/:code" element={
           <ProtectedRoute>
             <SubmissionsList />
           </ProtectedRoute>

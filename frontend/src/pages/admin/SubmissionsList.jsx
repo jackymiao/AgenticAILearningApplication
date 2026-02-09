@@ -11,20 +11,27 @@ export default function SubmissionsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  console.log('[SubmissionsList] Rendered with code:', code);
+
   useEffect(() => {
+    console.log('[SubmissionsList] useEffect triggered, loading submissions...');
     loadSubmissions();
   }, [code, sort]);
 
   const loadSubmissions = async () => {
     try {
+      console.log('[SubmissionsList] Loading project and submissions for:', code);
       const [projectData, submissionsData] = await Promise.all([
         adminApi.getProject(code),
         adminApi.getSubmissions(code, sort)
       ]);
+      console.log('[SubmissionsList] Project data:', projectData);
+      console.log('[SubmissionsList] Submissions data:', submissionsData);
       setProject(projectData);
       setSubmissions(submissionsData);
       setLoading(false);
     } catch (err) {
+      console.error('[SubmissionsList] Error loading:', err);
       setError(err.message);
       setLoading(false);
     }
