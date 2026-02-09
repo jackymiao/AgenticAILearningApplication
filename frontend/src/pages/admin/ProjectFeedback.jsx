@@ -20,14 +20,20 @@ export default function ProjectFeedback() {
       setLoading(true);
       setError('');
       
+      console.log('[FEEDBACK PAGE] Loading data for code:', code);
+      
       const [projectData, feedbackResponse] = await Promise.all([
         adminApi.getProject(code),
         adminApi.getFeedback(code, sortOption)
       ]);
       
+      console.log('[FEEDBACK PAGE] Project data:', projectData);
+      console.log('[FEEDBACK PAGE] Feedback response:', feedbackResponse);
+      
       setProject(projectData);
       setFeedbackData(feedbackResponse);
     } catch (err) {
+      console.error('[FEEDBACK PAGE] Error loading data:', err);
       setError(err.message);
     } finally {
       setLoading(false);

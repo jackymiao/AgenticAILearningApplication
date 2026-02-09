@@ -435,7 +435,7 @@ router.get('/projects/:code/feedback', async (req: Request, res: Response): Prom
     const stats = statsResult.rows[0];
 
     res.json({
-      stats: {
+      aggregate: {
         totalResponses: parseInt(stats.total_responses) || 0,
         avgContentRating: parseFloat(stats.avg_content_rating) || 0,
         avgSystemDesignRating: parseFloat(stats.avg_system_design_rating) || 0,
