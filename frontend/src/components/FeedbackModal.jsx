@@ -73,23 +73,26 @@ export default function FeedbackModal({ projectCode, userName, onClose }) {
 
     return (
       <div style={{ display: 'flex', gap: '8px' }}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <span
-            key={star}
-            onClick={() => handleRatingClick(category, star)}
-            onMouseEnter={() => setHoveredRating(prev => ({ ...prev, [category]: star }))}
-            onMouseLeave={() => setHoveredRating(prev => ({ ...prev, [category]: 0 }))}
-            style={{
-              fontSize: '32px',
-              cursor: 'pointer',
-              color: star <= (hoveredValue || currentRating) ? '#FFD700' : '#ddd',
-              transition: 'color 0.2s',
-              userSelect: 'none'
-            }}
-          >
-            ⭐
-          </span>
-        ))}
+        {[1, 2, 3, 4, 5].map((star) => {
+          const isActive = star <= (hoveredValue || currentRating);
+          return (
+            <span
+              key={star}
+              onClick={() => handleRatingClick(category, star)}
+              onMouseEnter={() => setHoveredRating(prev => ({ ...prev, [category]: star }))}
+              onMouseLeave={() => setHoveredRating(prev => ({ ...prev, [category]: 0 }))}
+              style={{
+                fontSize: '32px',
+                cursor: 'pointer',
+                color: isActive ? '#FFD700' : '#ddd',
+                transition: 'color 0.2s',
+                userSelect: 'none'
+              }}
+            >
+              {isActive ? '★' : '☆'}
+            </span>
+          );
+        })}
       </div>
     );
   };
