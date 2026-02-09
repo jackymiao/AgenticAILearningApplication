@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ShieldTokenIcon } from './TokenIcons';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
 export default function DefenseModal({ 
   attackId, 
   projectCode,
@@ -35,7 +37,7 @@ export default function DefenseModal({
     setDefending(true);
     
     try {
-      const response = await fetch(`/api/game/projects/${projectCode}/defend`, {
+      const response = await fetch(`${API_BASE}/game/projects/${projectCode}/defend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

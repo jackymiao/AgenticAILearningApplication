@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ReviewTokenIcon, ShieldTokenIcon } from './TokenIcons';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
 export default function AttackModal({ 
   isOpen, 
   onClose, 
@@ -24,7 +26,7 @@ export default function AttackModal({
     setError('');
     try {
       const response = await fetch(
-        `/api/game/projects/${projectCode}/active-players?userName=${encodeURIComponent(currentUserName)}`,
+        `${API_BASE}/game/projects/${projectCode}/active-players?userName=${encodeURIComponent(currentUserName)}`,
         { credentials: 'include' }
       );
       
@@ -48,7 +50,7 @@ export default function AttackModal({
     setError('');
     
     try {
-      const response = await fetch(`/api/game/projects/${projectCode}/attack`, {
+      const response = await fetch(`${API_BASE}/game/projects/${projectCode}/attack`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
