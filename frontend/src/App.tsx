@@ -64,7 +64,7 @@ function AppRoutes() {
             <SubmissionDetail />
           </ProtectedRoute>
         } />
-        <Route path="/admin/projects/:code" element={
+        <Route path="/admin/projects/:code/submissions" element={
           <ProtectedRoute>
             <SubmissionsList />
           </ProtectedRoute>
