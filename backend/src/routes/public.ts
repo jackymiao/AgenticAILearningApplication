@@ -11,7 +11,7 @@ router.get('/projects/:code', async (req: Request, res: Response): Promise<void>
     const code = normalizeProjectCode(req.params.code);
     
     const result = await pool.query<Project>(
-      `SELECT code, title, description, youtube_url, word_limit, attempt_limit_per_category
+      `SELECT code, title, description, youtube_url, word_limit, attempt_limit_per_category, enable_feedback
        FROM projects
        WHERE code = $1`,
       [code]
