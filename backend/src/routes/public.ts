@@ -157,24 +157,7 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       return;
     }
     
-    // Check cooldown (configurable, default 2 minutes, 10 seconds for E2E tests)
-    if (playerState.last_review_at) {
-      const lastReviewTime = new Date(playerState.last_review_at).getTime();
-      const now = Date.now();
-      const elapsed = now - lastReviewTime;
-      const cooldownMs = parseInt(process.env.REVIEW_COOLDOWN_MS || '120000', 10);
-      
-      if (elapsed < cooldownMs) {
-        const remaining = Math.ceil((cooldownMs - elapsed) / 1000);
-        res.status(429).json({ 
-          error: `Please wait ${remaining} seconds before submitting another review`,
-          cooldownRemaining: cooldownMs - elapsed
-        });
-        return;
-      }
-    }
-    
-    // Get project configuration
+    // Get project configuration to read cooldown setting
     const projectResult = await pool.query<Project>(
       `SELECT * FROM projects WHERE code = $1`,
       [code]
@@ -186,6 +169,24 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     }
     
     const project = projectResult.rows[0];
+    
+    // Check cooldown (use project-specific setting, fallback to env variable for backwards compatibility)
+    if (playerState.last_review_at) {
+      const lastReviewTime = new Date(playerState.last_review_at).getTime();
+      const now = Date.now();
+      const elapsed = now - lastReviewTime;
+      // Convert project's cooldown seconds to milliseconds
+      const cooldownMs = (project.review_cooldown_seconds || 120) * 1000;
+      
+      if (elapsed < cooldownMs) {
+        const remaining = Math.ceil((cooldownMs - elapsed) / 1000);
+        res.status(429).json({ 
+          error: `Please wait ${remaining} seconds before submitting another review`,
+          cooldownRemaining: cooldownMs - elapsed
+        });
+        return;
+      }
+    }
     
     // Count total review attempts (not per category anymore)
     const countResult = await pool.query<{ count: number }>(

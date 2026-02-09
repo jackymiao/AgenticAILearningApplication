@@ -15,6 +15,7 @@ export interface Project {
   youtube_url: string | null;
   word_limit: number;
   attempt_limit_per_category: number;
+  review_cooldown_seconds: number;
   created_by_admin_id: string | null;
   created_at: Date;
   updated_at: Date;

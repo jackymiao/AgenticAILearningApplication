@@ -14,7 +14,8 @@ export default function CreateProject() {
     description: 'Please review the video and submit your essay below. Make sure to stay within the word limit and use the AI review features to improve your work before final submission.',
     youtubeUrl: '',
     wordLimit: 150,
-    attemptLimitPerCategory: 3
+    attemptLimitPerCategory: 3,
+    reviewCooldownSeconds: 120
   });
 
   const handleChange = (e) => {
@@ -99,7 +100,7 @@ export default function CreateProject() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label>Word Limit *</label>
                 <input
@@ -122,6 +123,26 @@ export default function CreateProject() {
                   min={1}
                   required
                 />
+              </div>
+
+              <div>
+                <label>Review Cooldown *</label>
+                <select
+                  name="reviewCooldownSeconds"
+                  value={formData.reviewCooldownSeconds}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value={30}>30 seconds</option>
+                  <option value={60}>60 seconds</option>
+                  <option value={90}>90 seconds</option>
+                  <option value={120}>120 seconds</option>
+                  <option value={150}>150 seconds</option>
+                  <option value={180}>180 seconds</option>
+                </select>
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  Time between reviews
+                </div>
               </div>
             </div>
 

@@ -24,7 +24,8 @@ export default function EditProject() {
         description: data.description,
         youtubeUrl: data.youtube_url || '',
         wordLimit: data.word_limit,
-        attemptLimitPerCategory: data.attempt_limit_per_category
+        attemptLimitPerCategory: data.attempt_limit_per_category,
+        reviewCooldownSeconds: data.review_cooldown_seconds || 120
       });
       setLoading(false);
     } catch (err) {
@@ -119,7 +120,7 @@ export default function EditProject() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <label>Word Limit *</label>
                 <input
@@ -142,6 +143,26 @@ export default function EditProject() {
                   min={1}
                   required
                 />
+              </div>
+
+              <div>
+                <label>Review Cooldown *</label>
+                <select
+                  name="reviewCooldownSeconds"
+                  value={formData.reviewCooldownSeconds}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value={30}>30 seconds</option>
+                  <option value={60}>60 seconds</option>
+                  <option value={90}>90 seconds</option>
+                  <option value={120}>120 seconds</option>
+                  <option value={150}>150 seconds</option>
+                  <option value={180}>180 seconds</option>
+                </select>
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  Time between reviews
+                </div>
               </div>
             </div>
 

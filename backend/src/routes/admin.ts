@@ -78,7 +78,8 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       description,
       youtubeUrl,
       wordLimit,
-      attemptLimitPerCategory
+      attemptLimitPerCategory,
+      reviewCooldownSeconds
     } = req.body;
     
     // Validate required fields
@@ -104,15 +105,16 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       youtubeUrl: youtubeUrl || null,
       wordLimit: Number(wordLimit) || 150,
       attemptLimitPerCategory: Number(attemptLimitPerCategory) || 3,
+      reviewCooldownSeconds: Number(reviewCooldownSeconds) || 120,
       adminId: req.session.adminId
     });
     
     const result = await pool.query<Project>(
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
-        created_by_admin_id
+        review_cooldown_seconds, created_by_admin_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         codeNorm,
@@ -121,6 +123,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
         youtubeUrl || null,
         Number(wordLimit) || 150,
         Number(attemptLimitPerCategory) || 3,
+        Number(reviewCooldownSeconds) || 120,
         req.session.adminId
       ]
     );
@@ -149,7 +152,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
       description,
       youtubeUrl,
       wordLimit,
-      attemptLimitPerCategory
+      attemptLimitPerCategory,
+      reviewCooldownSeconds
     } = req.body;
     
     const result = await pool.query<Project>(
@@ -159,6 +163,7 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
            youtube_url = $4,
            word_limit = $5,
            attempt_limit_per_category = $6,
+           review_cooldown_seconds = $7,
            updated_at = NOW()
        WHERE code = $1
        RETURNING *`,
@@ -168,7 +173,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
         description,
         youtubeUrl || null,
         wordLimit,
-        attemptLimitPerCategory
+        attemptLimitPerCategory,
+        reviewCooldownSeconds
       ]
     );
     
