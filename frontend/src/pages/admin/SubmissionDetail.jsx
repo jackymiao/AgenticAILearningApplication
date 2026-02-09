@@ -9,7 +9,7 @@ export default function SubmissionDetail() {
   const [submission, setSubmission] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('grammar');
+  const [activeTab, setActiveTab] = useState('content');
   const [expandedReviews, setExpandedReviews] = useState({});
   
   const [adminScore, setAdminScore] = useState('');
@@ -24,11 +24,13 @@ export default function SubmissionDetail() {
   const loadSubmission = async () => {
     try {
       const data = await adminApi.getSubmission(submissionId);
+      console.log('Loaded submission data:', data);
       setSubmission(data);
       setAdminScore(data.admin_score || '');
       setAdminFeedback(data.admin_feedback || '');
       setLoading(false);
     } catch (err) {
+      console.error('Error loading submission:', err);
       setError(err.message);
       setLoading(false);
     }
@@ -102,7 +104,7 @@ export default function SubmissionDetail() {
     );
   }
 
-  const categories = ['grammar', 'structure', 'style', 'content'];
+  const categories = ['content', 'structure', 'mechanics'];
 
   return (
     <PageContainer>
@@ -181,42 +183,44 @@ export default function SubmissionDetail() {
 
               {submission.reviewHistory[activeTab]?.length > 0 ? (
                 <div>
-                  {submission.reviewHistory[activeTab].map(review => (
-                    <div 
-                      key={review.id}
-                      style={{ 
-                        border: '1px solid #ddd', 
-                        borderRadius: '6px', 
-                        marginBottom: '12px',
-                        overflow: 'hidden'
-                      }}
-                    >
+                  {submission.reviewHistory[activeTab].map((review, index) => {
+                    const reviewKey = review.id || `review-${index}`;
+                    return (
                       <div 
+                        key={reviewKey}
                         style={{ 
-                          padding: '12px 16px', 
-                          backgroundColor: '#f5f5f5',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
+                          border: '1px solid #ddd', 
+                          borderRadius: '6px', 
+                          marginBottom: '12px',
+                          overflow: 'hidden'
                         }}
-                        onClick={() => toggleReview(review.id)}
                       >
-                        <div>
-                          <strong>Attempt {review.attempt_number}</strong>
-                          <span style={{ marginLeft: '12px', color: '#666', fontSize: '14px' }}>
-                            {new Date(review.created_at).toLocaleString()}
-                          </span>
-                          {review.score && (
-                            <span style={{ marginLeft: '12px', fontWeight: 'bold' }}>
-                              Score: {review.score}
+                        <div 
+                          style={{ 
+                            padding: '12px 16px', 
+                            backgroundColor: '#f5f5f5',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                          onClick={() => toggleReview(reviewKey)}
+                        >
+                          <div>
+                            <strong>Attempt {review.attempt_number}</strong>
+                            <span style={{ marginLeft: '12px', color: '#666', fontSize: '14px' }}>
+                              {new Date(review.created_at).toLocaleString()}
                             </span>
-                          )}
+                            {review.score && (
+                              <span style={{ marginLeft: '12px', fontWeight: 'bold' }}>
+                                Score: {review.score}
+                              </span>
+                            )}
+                          </div>
+                          <div>{expandedReviews[reviewKey] ? '▼' : '▶'}</div>
                         </div>
-                        <div>{expandedReviews[review.id] ? '▼' : '▶'}</div>
-                      </div>
-                      
-                      {expandedReviews[review.id] && (
+                        
+                        {expandedReviews[reviewKey] && (
                         <div style={{ padding: '16px' }}>
                           {review.status === 'success' && review.result_json && (() => {
                             try {
@@ -252,11 +256,27 @@ export default function SubmissionDetail() {
                                     Score: {score}/100
                                   </div>
 
-                                  {/* Overview */}
-                                  {data.overview && (
+                                  {/* Overview - What's Good */}
+                                  {data.overview?.good && data.overview.good.length > 0 && (
                                     <div style={{ marginBottom: '16px' }}>
-                                      <h4 style={{ marginBottom: '8px' }}>Summary:</h4>
-                                      <p style={{ lineHeight: '1.6' }}>{data.overview}</p>
+                                      <h4 style={{ marginBottom: '8px', color: '#4CAF50' }}>✓ Strengths:</h4>
+                                      <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
+                                        {data.overview.good.map((item, idx) => (
+                                          <li key={idx} style={{ marginBottom: '6px', color: '#333' }}>{item}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                  {/* Overview - What to Improve */}
+                                  {data.overview?.improve && data.overview.improve.length > 0 && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                      <h4 style={{ marginBottom: '8px', color: '#ff9800' }}>⚠ Areas for Improvement:</h4>
+                                      <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
+                                        {data.overview.improve.map((item, idx) => (
+                                          <li key={idx} style={{ marginBottom: '6px', color: '#333' }}>{item}</li>
+                                        ))}
+                                      </ul>
                                     </div>
                                   )}
 
@@ -305,10 +325,10 @@ export default function SubmissionDetail() {
                                   {/* Suggestions */}
                                   {data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0 && (
                                     <div style={{ marginBottom: '16px' }}>
-                                      <h4 style={{ marginBottom: '8px' }}>Suggestions:</h4>
-                                      <ul style={{ paddingLeft: '24px', lineHeight: '1.8' }}>
+                                      <h4 style={{ marginBottom: '8px', color: '#2196F3' }}>💡 Suggestions:</h4>
+                                      <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
                                         {data.suggestions.map((suggestion, idx) => (
-                                          <li key={idx} style={{ marginBottom: '8px' }}>
+                                          <li key={idx} style={{ marginBottom: '6px', color: '#333' }}>
                                             {typeof suggestion === 'string' ? suggestion : suggestion.suggestion || JSON.stringify(suggestion)}
                                           </li>
                                         ))}
@@ -332,7 +352,8 @@ export default function SubmissionDetail() {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
