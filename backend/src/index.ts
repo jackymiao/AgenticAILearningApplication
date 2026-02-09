@@ -29,6 +29,7 @@ import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
 import gameRoutes from './routes/game.js';
 import testRoutes from './routes/test.js';
+import feedbackRoutes from './routes/feedback.js';
 import { setupWebSocketServer } from './websocket.js';
 
 dotenv.config();
@@ -101,6 +102,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/public', feedbackRoutes);
 
 // Root route for debugging
 app.get('/', (req: Request, res: Response) => {

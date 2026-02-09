@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import pool, { normalizeProjectCode } from '../db/index.js';
 import { requireAdmin } from '../middleware/auth.js';
-import type { Project, Submission, ReviewAttempt, ReviewCategory } from '../types.js';
+import type { Project, Submission, ReviewAttempt, ReviewCategory, ProjectFeedback } from '../types.js';
 
 const router = express.Router();
 
@@ -79,7 +79,8 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       youtubeUrl,
       wordLimit,
       attemptLimitPerCategory,
-      reviewCooldownSeconds
+      reviewCooldownSeconds,
+      enableFeedback
     } = req.body;
     
     // Validate required fields
@@ -112,9 +113,9 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
     const result = await pool.query<Project>(
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
-        review_cooldown_seconds, created_by_admin_id
+        review_cooldown_seconds, enable_feedback, created_by_admin_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         codeNorm,
@@ -124,6 +125,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
         Number(wordLimit) || 150,
         Number(attemptLimitPerCategory) || 3,
         Number(reviewCooldownSeconds) || 120,
+        enableFeedback === true || enableFeedback === 'true',
         req.session.adminId
       ]
     );
@@ -153,7 +155,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
       youtubeUrl,
       wordLimit,
       attemptLimitPerCategory,
-      reviewCooldownSeconds
+      reviewCooldownSeconds,
+      enableFeedback
     } = req.body;
     
     const result = await pool.query<Project>(
@@ -164,6 +167,7 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
            word_limit = $5,
            attempt_limit_per_category = $6,
            review_cooldown_seconds = $7,
+           enable_feedback = $8,
            updated_at = NOW()
        WHERE code = $1
        RETURNING *`,
@@ -174,7 +178,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
         youtubeUrl || null,
         wordLimit,
         attemptLimitPerCategory,
-        reviewCooldownSeconds
+        reviewCooldownSeconds,
+        enableFeedback === true || enableFeedback === 'true'
       ]
     );
     
@@ -353,6 +358,94 @@ router.delete('/projects', async (req: Request, res: Response): Promise<void> =>
   } catch (error) {
     console.error('Delete projects error:', error);
     res.status(500).json({ error: 'Failed to delete projects' });
+  }
+});
+
+// Get project feedback (admin only)
+router.get('/projects/:code/feedback', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    const sortBy = (req.query.sort as string) || 'newest';
+
+    // Check if project exists and has feedback enabled
+    const projectResult = await pool.query<Project>(
+      'SELECT enable_feedback FROM projects WHERE code = $1',
+      [code]
+    );
+
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    if (!projectResult.rows[0].enable_feedback) {
+      res.status(403).json({ error: 'Feedback is not enabled for this project' });
+      return;
+    }
+
+    // Determine sort order
+    let orderBy = 'submitted_at DESC';
+    switch (sortBy) {
+      case 'content-high':
+        orderBy = 'content_rating DESC, submitted_at DESC';
+        break;
+      case 'content-low':
+        orderBy = 'content_rating ASC, submitted_at DESC';
+        break;
+      case 'system-high':
+        orderBy = 'system_design_rating DESC, submitted_at DESC';
+        break;
+      case 'system-low':
+        orderBy = 'system_design_rating ASC, submitted_at DESC';
+        break;
+      case 'response-high':
+        orderBy = 'response_quality_rating DESC, submitted_at DESC';
+        break;
+      case 'response-low':
+        orderBy = 'response_quality_rating ASC, submitted_at DESC';
+        break;
+      case 'oldest':
+        orderBy = 'submitted_at ASC';
+        break;
+      default:
+        orderBy = 'submitted_at DESC';
+    }
+
+    // Get individual feedback
+    const feedbackResult = await pool.query<ProjectFeedback>(
+      `SELECT id, project_code, content_rating, system_design_rating, 
+              response_quality_rating, comment, submitted_at
+       FROM project_feedback
+       WHERE project_code = $1
+       ORDER BY ${orderBy}`,
+      [code]
+    );
+
+    // Calculate aggregate statistics
+    const statsResult = await pool.query(`
+      SELECT 
+        COUNT(*)::int as total_responses,
+        AVG(content_rating)::numeric(3,2) as avg_content_rating,
+        AVG(system_design_rating)::numeric(3,2) as avg_system_design_rating,
+        AVG(response_quality_rating)::numeric(3,2) as avg_response_quality_rating
+      FROM project_feedback
+      WHERE project_code = $1
+    `, [code]);
+
+    const stats = statsResult.rows[0];
+
+    res.json({
+      stats: {
+        totalResponses: parseInt(stats.total_responses) || 0,
+        avgContentRating: parseFloat(stats.avg_content_rating) || 0,
+        avgSystemDesignRating: parseFloat(stats.avg_system_design_rating) || 0,
+        avgResponseQualityRating: parseFloat(stats.avg_response_quality_rating) || 0
+      },
+      feedback: feedbackResult.rows
+    });
+  } catch (error) {
+    console.error('Get feedback error:', error);
+    res.status(500).json({ error: 'Failed to fetch feedback' });
   }
 });
 

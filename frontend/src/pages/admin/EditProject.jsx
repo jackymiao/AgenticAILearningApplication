@@ -25,7 +25,8 @@ export default function EditProject() {
         youtubeUrl: data.youtube_url || '',
         wordLimit: data.word_limit,
         attemptLimitPerCategory: data.attempt_limit_per_category,
-        reviewCooldownSeconds: data.review_cooldown_seconds || 120
+        reviewCooldownSeconds: data.review_cooldown_seconds || 120,
+        enableFeedback: data.enable_feedback || false
       });
       setLoading(false);
     } catch (err) {
@@ -164,6 +165,24 @@ export default function EditProject() {
                   Time between reviews
                 </div>
               </div>
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f9f9f9', borderRadius: '6px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  name="enableFeedback"
+                  checked={formData.enableFeedback}
+                  onChange={(e) => setFormData(prev => ({ ...prev, enableFeedback: e.target.checked }))}
+                  style={{ width: '20px', height: '20px', marginRight: '12px', cursor: 'pointer' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Enable Feedback</div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    Collect anonymous feedback from students after final submission
+                  </div>
+                </div>
+              </label>
             </div>
 
             {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}

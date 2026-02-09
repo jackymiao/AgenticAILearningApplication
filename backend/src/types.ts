@@ -16,6 +16,7 @@ export interface Project {
   word_limit: number;
   attempt_limit_per_category: number;
   review_cooldown_seconds: number;
+  enable_feedback: boolean;
   created_by_admin_id: string | null;
   created_at: Date;
   updated_at: Date;
@@ -80,6 +81,17 @@ export interface AgentCallResult {
   result_json?: any;
   score?: number | null;
   error_message?: string;
+}
+
+export interface ProjectFeedback {
+  id: string;
+  project_code: string;
+  content_rating: number;
+  system_design_rating: number;
+  response_quality_rating: number;
+  comment: string;
+  submitted_at: Date;
+  submission_hash: string;
 }
 
 // Extend express-session types
