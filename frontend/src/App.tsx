@@ -54,11 +54,6 @@ function AppRoutes() {
             <EditProject />
           </ProtectedRoute>
         } />
-        <Route path="/admin/projects/:code" element={
-          <ProtectedRoute>
-            <SubmissionsList />
-          </ProtectedRoute>
-        } />
         <Route path="/admin/projects/:code/feedback" element={
           <ProtectedRoute>
             <ProjectFeedback />
@@ -67,6 +62,11 @@ function AppRoutes() {
         <Route path="/admin/projects/:code/submissions/:submissionId" element={
           <ProtectedRoute>
             <SubmissionDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/projects/:code" element={
+          <ProtectedRoute>
+            <SubmissionsList />
           </ProtectedRoute>
         } />
       </Routes>
