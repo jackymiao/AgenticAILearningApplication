@@ -33,10 +33,68 @@ export default function ProjectPage() {
   const [cooldownEnds, setCooldownEnds] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
+  // Load saved username and essay from localStorage on mount
+  useEffect(() => {
+    const savedUserName = localStorage.getItem(`project_${code}_userName`);
+    const savedEssay = localStorage.getItem(`project_${code}_essay`);
+    
+    if (savedEssay) {
+      setEssay(savedEssay);
+    }
+    
+    if (savedUserName) {
+      setUserName(savedUserName);
+      setUserNameSubmitted(true);
+      // Auto-load user state
+      loadUserStateWithName(savedUserName);
+    }
+  }, [code]);
+
+  // Save essay to localStorage whenever it changes
+  useEffect(() => {
+    if (essay && userNameSubmitted) {
+      localStorage.setItem(`project_${code}_essay`, essay);
+    }
+  }, [essay, code, userNameSubmitted]);
 
   useEffect(() => {
     loadProject();
   }, [code]);
+
+  const loadUserStateWithName = async (name) => {
+    try {
+      const data = await publicApi.getUserState(code, name);
+      setUserState(data);
+      setError('');
+      
+      // Initialize player in game system
+      await initializePlayerWithName(name);
+    } catch (err) {
+      // If user state fails, clear saved username
+      localStorage.removeItem(`project_${code}_userName`);
+      setUserNameSubmitted(false);
+      setError(err.message);
+    }
+  };
+
+  const initializePlayerWithName = async (name) => {
+    try {
+      const playerData = await gameApi.initPlayer(code, name);
+      setTokens({
+        reviewTokens: playerData.reviewTokens,
+        attackTokens: playerData.attackTokens,
+        shieldTokens: playerData.shieldTokens
+      });
+      
+      // Set cooldown if exists
+      if (playerData.cooldownRemaining > 0) {
+        const endsAt = Date.now() + playerData.cooldownRemaining;
+        setCooldownEnds(endsAt);
+      }
+    } catch (err) {
+      console.error('Failed to initialize player:', err);
+    }
+  };
 
   const loadProject = async () => {
     try {
@@ -60,6 +118,9 @@ export default function ProjectPage() {
       setUserState(data);
       setUserNameSubmitted(true);
       setError('');
+      
+      // Save username to localStorage
+      localStorage.setItem(`project_${code}_userName`, userName);
       
       // Initialize player in game system
       await initializePlayer();
