@@ -11,7 +11,18 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
 
     const connect = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.hostname}:3000/ws`;
+      const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+      
+      // Determine WebSocket URL based on API_BASE
+      let wsUrl;
+      if (API_BASE.startsWith('http')) {
+        // Production: Use backend URL
+        const backendUrl = new URL(API_BASE);
+        wsUrl = `${protocol}//${backendUrl.host}/ws`;
+      } else {
+        // Development: Use localhost:3000
+        wsUrl = `${protocol}//${window.location.hostname}:3000/ws`;
+      }
       
       console.log('[WS] Connecting to:', wsUrl);
       ws.current = new WebSocket(wsUrl);
