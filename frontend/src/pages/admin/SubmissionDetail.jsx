@@ -111,7 +111,7 @@ export default function SubmissionDetail() {
       <div style={{ padding: '24px 0' }}>
         <div style={{ marginBottom: '24px' }}>
           <button 
-            onClick={() => navigate(`/admin/projects/${code}`)}
+            onClick={() => navigate(`/admin/projects/${code}/submissions`)}
             className="secondary"
             style={{ marginBottom: '12px' }}
           >

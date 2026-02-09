@@ -144,7 +144,7 @@ export default function AdminDashboard() {
                       {new Date(project.created_at).toLocaleDateString()}
                     </td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <Link to={`/admin/projects/${project.code}`}>
+                      <Link to={`/admin/projects/${project.code}/submissions`}>
                         <button className="secondary" style={{ marginRight: '8px' }}>
                           View Submissions
                         </button>
