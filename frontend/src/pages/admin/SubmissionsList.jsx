@@ -6,6 +6,7 @@ import { adminApi } from '../../api/endpoints';
 export default function SubmissionsList() {
   const { code } = useParams();
   const [submissions, setSubmissions] = useState([]);
+  const [project, setProject] = useState(null);
   const [sort, setSort] = useState('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,8 +17,12 @@ export default function SubmissionsList() {
 
   const loadSubmissions = async () => {
     try {
-      const data = await adminApi.getSubmissions(code, sort);
-      setSubmissions(data);
+      const [projectData, submissionsData] = await Promise.all([
+        adminApi.getProject(code),
+        adminApi.getSubmissions(code, sort)
+      ]);
+      setProject(projectData);
+      setSubmissions(submissionsData);
       setLoading(false);
     } catch (err) {
       setError(err.message);
@@ -36,9 +41,35 @@ export default function SubmissionsList() {
   return (
     <PageContainer>
       <div style={{ padding: '24px 0' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <h1>Submissions for Project {code}</h1>
-          <Link to="/admin" style={{ fontSize: '14px' }}>← Back to Dashboard</Link>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+              <h1 style={{ margin: 0 }}>
+                {project ? project.title : `Project ${code}`}
+              </h1>
+              {project?.enable_feedback && (
+                <Link 
+                  to={`/admin/projects/${code}/feedback`}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  📊 Feedback
+                </Link>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Link to="/admin" style={{ fontSize: '14px' }}>← Back to Dashboard</Link>
+              <span style={{ color: '#ddd' }}>|</span>
+              <span style={{ fontSize: '14px', color: '#666' }}>Project Code: {code}</span>
+            </div>
+          </div>
         </div>
 
         <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

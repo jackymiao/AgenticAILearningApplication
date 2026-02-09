@@ -35,7 +35,16 @@ export const publicApi = {
     method: 'POST',
     body: JSON.stringify({ userName, essay })
   }),
-  getLeaderboard: (code) => apiFetch(`/public/projects/${code}/leaderboard`)
+  getLeaderboard: (code) => apiFetch(`/public/projects/${code}/leaderboard`),
+  checkFeedback: (code, userName, essay) => apiFetch(`/public/${code}/feedback/check`, {
+    method: 'POST',
+    body: JSON.stringify({ userName, essay })
+  }),
+  submitFeedback: (code, userName, essay, contentRating, systemDesignRating, responseQualityRating, comment) => 
+    apiFetch(`/public/${code}/feedback/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ userName, essay, contentRating, systemDesignRating, responseQualityRating, comment })
+    })
 };
 
 // Game endpoints
@@ -80,5 +89,6 @@ export const adminApi = {
   updateGrading: (submissionId, adminScore, adminFeedback) => apiFetch(`/admin/submissions/${submissionId}/grading`, {
     method: 'PATCH',
     body: JSON.stringify({ adminScore, adminFeedback })
-  })
+  }),
+  getFeedback: (code, sort) => apiFetch(`/admin/projects/${code}/feedback?sort=${sort || 'newest'}`)
 };

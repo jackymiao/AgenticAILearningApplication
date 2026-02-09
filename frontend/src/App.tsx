@@ -11,6 +11,7 @@ import CreateProject from './pages/admin/CreateProject';
 import EditProject from './pages/admin/EditProject';
 import SubmissionsList from './pages/admin/SubmissionsList';
 import SubmissionDetail from './pages/admin/SubmissionDetail';
+import ProjectFeedback from './pages/admin/ProjectFeedback';
 import HelpPage from './pages/HelpPage';
 import { ReactNode } from 'react';
 
@@ -56,6 +57,11 @@ function AppRoutes() {
         <Route path="/admin/projects/:code" element={
           <ProtectedRoute>
             <SubmissionsList />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/projects/:code/feedback" element={
+          <ProtectedRoute>
+            <ProjectFeedback />
           </ProtectedRoute>
         } />
         <Route path="/admin/projects/:code/submissions/:submissionId" element={

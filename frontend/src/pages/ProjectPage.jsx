@@ -6,6 +6,7 @@ import ReviewLoadingAnimation from '../components/ReviewLoadingAnimation';
 import TokenDisplay from '../components/TokenDisplay';
 import AttackModal from '../components/AttackModal';
 import DefenseModal from '../components/DefenseModal';
+import FeedbackModal from '../components/FeedbackModal';
 import { publicApi, gameApi } from '../api/endpoints';
 import { useWebSocket } from '../hooks/useWebSocket';
 
@@ -32,6 +33,9 @@ export default function ProjectPage() {
   const [attackWaitingResult, setAttackWaitingResult] = useState(false);
   const [cooldownEnds, setCooldownEnds] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  
+  // Feedback state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Load saved username and essay from localStorage on mount
   useEffect(() => {
@@ -293,6 +297,18 @@ export default function ProjectPage() {
       setUserState(updatedState);
       
       alert('Essay submitted successfully!');
+      
+      // Check if feedback is enabled and user hasn't submitted yet
+      if (project?.enable_feedback) {
+        try {
+          const feedbackCheck = await publicApi.checkFeedback(code, userName, essay);
+          if (!feedbackCheck.hasSubmitted) {
+            setShowFeedbackModal(true);
+          }
+        } catch (err) {
+          console.error('Failed to check feedback status:', err);
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -733,6 +749,21 @@ export default function ProjectPage() {
           </>
         )}
       </div>
+      
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <FeedbackModal
+          projectCode={code}
+          userName={userName}
+          essay={essay}
+          onClose={(submitted) => {
+            setShowFeedbackModal(false);
+            if (submitted) {
+              console.log('Feedback submitted successfully');
+            }
+          }}
+        />
+      )}
     </PageContainer>
   );
 }
