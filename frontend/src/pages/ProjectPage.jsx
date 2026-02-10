@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import Leaderboard from '../components/Leaderboard';
@@ -134,7 +134,7 @@ export default function ProjectPage() {
   };
   
   // Initialize player and get tokens
-  const initializePlayer = async () => {
+  const initializePlayer = useCallback(async () => {
     try {
       const playerData = await gameApi.initPlayer(code, userName);
       setTokens({
@@ -151,7 +151,7 @@ export default function ProjectPage() {
     } catch (err) {
       console.error('Failed to initialize player:', err);
     }
-  };
+  }, [code, userName]);
   
   // WebSocket connection for real-time game events
   useWebSocket(
@@ -364,7 +364,7 @@ export default function ProjectPage() {
     // Modal will close itself
   };
   
-  const handleDefenseResponse = async (result) => {
+  const handleDefenseResponse = useCallback(async (result) => {
     console.log('Defense response:', result);
     if (result.tokens) {
       setTokens({
@@ -377,7 +377,11 @@ export default function ProjectPage() {
     
     // Refresh player state
     await initializePlayer();
-  };
+  }, [initializePlayer]);
+
+  const handleDefenseClose = useCallback(() => {
+    setIncomingAttackId(null);
+  }, []);
   
   const formatCooldown = (ms) => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -603,7 +607,7 @@ export default function ProjectPage() {
               projectCode={code}
               hasShield={tokens && tokens.shieldTokens > 0}
               onDefend={handleDefenseResponse}
-              onClose={() => setIncomingAttackId(null)}
+              onClose={handleDefenseClose}
             />
 
             {/* Final Score Display */}
