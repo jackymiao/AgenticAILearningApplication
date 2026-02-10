@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ShieldTokenIcon } from './TokenIcons';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -12,28 +12,12 @@ export default function DefenseModal({
 }) {
   const [timeLeft, setTimeLeft] = useState(15);
   const [defending, setDefending] = useState(false);
+  const defendingRef = useRef(false);
 
-  useEffect(() => {
-    if (!attackId) return;
+  const handleDefend = useCallback(async (useShield) => {
+    if (defendingRef.current) return;
     
-    // Countdown timer
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          // Time's up - auto accept
-          handleDefend(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [attackId]);
-
-  const handleDefend = async (useShield) => {
-    if (defending) return;
-    
+    defendingRef.current = true;
     setDefending(true);
     
     try {
@@ -60,7 +44,30 @@ export default function DefenseModal({
       // Even on error, close the modal
       onClose();
     }
-  };
+  }, [attackId, projectCode, onDefend, onClose]);
+
+  useEffect(() => {
+    if (!attackId) return;
+    
+    // Reset defending state when attackId changes
+    defendingRef.current = false;
+    setDefending(false);
+    setTimeLeft(15);
+    
+    // Countdown timer
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          // Time's up - auto accept
+          handleDefend(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [attackId, handleDefend]);
 
   if (!attackId) return null;
 
@@ -88,7 +95,8 @@ export default function DefenseModal({
                   stroke="#E74C3C" 
                   strokeWidth="8"
                   strokeLinecap="round"
-                  strokeDasharray={`${(timeLeft / 15) * 283} 283`}
+                  strokeDasharray="282.74"
+                  strokeDashoffset={282.74 * (1 - timeLeft / 15)}
                   transform="rotate(-90 50 50)"
                   className="countdown-progress"
                 />

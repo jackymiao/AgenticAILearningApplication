@@ -162,7 +162,7 @@ export default function ProjectPage() {
       console.log('Incoming attack:', attackId);
       setIncomingAttackId(attackId);
     },
-    (updatedTokens) => {
+    async (updatedTokens) => {
       // Handle token update
       console.log('Tokens updated:', updatedTokens);
       setTokens({
@@ -170,6 +170,14 @@ export default function ProjectPage() {
         attackTokens: updatedTokens.attack_tokens,
         shieldTokens: updatedTokens.shield_tokens
       });
+      
+      // Also update userState to reflect review_tokens as attemptsRemaining
+      try {
+        const updatedState = await publicApi.getUserState(code, userName);
+        setUserState(updatedState);
+      } catch (err) {
+        console.error('Failed to reload user state after token update:', err);
+      }
     },
     (result) => {
       // Handle attack result
@@ -332,9 +340,27 @@ export default function ProjectPage() {
     setShowAttackModal(true);
   };
   
-  const handleAttackInitiated = (result) => {
+  const handleAttackInitiated = async (result) => {
     console.log('Attack initiated:', result);
     setAttackWaitingResult(true);
+    
+    // Update tokens immediately if provided
+    if (result.tokens) {
+      setTokens({
+        reviewTokens: result.tokens.review_tokens,
+        attackTokens: result.tokens.attack_tokens,
+        shieldTokens: result.tokens.shield_tokens
+      });
+    }
+    
+    // Reload user state to update attempts remaining
+    try {
+      const updatedState = await publicApi.getUserState(code, userName);
+      setUserState(updatedState);
+    } catch (err) {
+      console.error('Failed to reload user state after attack:', err);
+    }
+    
     // Modal will close itself
   };
   

@@ -69,7 +69,7 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
       `INSERT INTO player_state (project_code, user_name, user_name_norm, review_tokens)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (project_code, user_name_norm) 
-       DO UPDATE SET updated_at = NOW()
+       DO UPDATE SET updated_at = NOW(), user_name = EXCLUDED.user_name
        RETURNING review_tokens`,
       [code, userName, userNameNorm, limit]
     );

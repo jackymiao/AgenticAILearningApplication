@@ -596,7 +596,7 @@ a:hover {
 }
 
 .countdown-progress {
-  transition: stroke-dasharray 1s linear;
+  transition: stroke-dashoffset 1s linear;
 }
 
 .countdown-number {

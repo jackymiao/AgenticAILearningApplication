@@ -17,14 +17,27 @@ router.post('/projects/:code/player/init', async (req: Request, res: Response): 
     
     const userNameNorm = normalizeUserName(userName);
     
+    // Get project's attempt limit
+    const projectResult = await pool.query(
+      `SELECT attempt_limit_per_category FROM projects WHERE code = $1`,
+      [code]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+    
+    const limit = projectResult.rows[0].attempt_limit_per_category;
+    
     // Insert or get existing player state
     const result = await pool.query(
-      `INSERT INTO player_state (project_code, user_name, user_name_norm)
-       VALUES ($1, $2, $3)
+      `INSERT INTO player_state (project_code, user_name, user_name_norm, review_tokens)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (project_code, user_name_norm)
-       DO UPDATE SET updated_at = NOW()
+       DO UPDATE SET updated_at = NOW(), user_name = EXCLUDED.user_name
        RETURNING review_tokens, attack_tokens, shield_tokens, last_review_at`,
-      [code, userName, userNameNorm]
+      [code, userName, userNameNorm, limit]
     );
     
     const playerState = result.rows[0];
@@ -211,6 +224,12 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
       
       await client.query('COMMIT');
       
+      // Get updated tokens for attacker
+      const attackerTokensResult = await pool.query(
+        'SELECT review_tokens, attack_tokens, shield_tokens FROM player_state WHERE project_code = $1 AND user_name_norm = $2',
+        [code, attackerNameNorm]
+      );
+      
       // Send WebSocket notification to target
       const notificationSent = ws.sendAttackNotification(code, targetName, attackId);
       
@@ -227,7 +246,8 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
       res.json({ 
         success: true, 
         attackId,
-        message: 'Attack initiated, waiting for target response...'
+        message: 'Attack initiated, waiting for target response...',
+        tokens: attackerTokensResult.rows[0]
       });
       
     } catch (error) {
@@ -263,7 +283,7 @@ router.post('/projects/:code/defend', async (req: Request, res: Response): Promi
       
       // Get attack details
       const attackResult = await client.query(
-        `SELECT attacker_name, target_name, target_name_norm, status
+        `SELECT attacker_name, attacker_name_norm, target_name, target_name_norm, status
          FROM attacks
          WHERE id = $1 AND project_code = $2`,
         [attackId, code]
