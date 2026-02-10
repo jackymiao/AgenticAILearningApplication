@@ -64,16 +64,17 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
     
     const limit = projectResult.rows[0].attempt_limit_per_category;
     
-    // Count total review attempts (global, not per category)
-    const attemptsResult = await pool.query<{ count: number }>(
-      `SELECT COUNT(DISTINCT attempt_number)::int as count
-       FROM review_attempts
-       WHERE project_code = $1 AND user_name_norm = $2`,
-      [code, userNameNorm]
+    // Initialize or get player_state
+    const playerStateResult = await pool.query(
+      `INSERT INTO player_state (project_code, user_name, user_name_norm, review_tokens)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (project_code, user_name_norm) 
+       DO UPDATE SET updated_at = NOW()
+       RETURNING review_tokens`,
+      [code, userName, userNameNorm, limit]
     );
     
-    const totalAttempts = attemptsResult.rows[0]?.count || 0;
-    const attemptsRemaining = limit - totalAttempts;
+    const attemptsRemaining = playerStateResult.rows[0].review_tokens;
     
     // Get review history grouped by category (most recent first)
     const historyResult = await pool.query<ReviewAttempt>(
@@ -188,6 +189,15 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       }
     }
     
+    // Check review_tokens
+    if (playerState.review_tokens < 1) {
+      res.status(403).json({ 
+        error: `You have no review tokens remaining`,
+        attemptsRemaining: 0
+      });
+      return;
+    }
+    
     // Count total review attempts (not per category anymore)
     const countResult = await pool.query<{ count: number }>(
       `SELECT COUNT(DISTINCT attempt_number)::int as count
@@ -197,14 +207,6 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     );
     
     const attemptCount = countResult.rows[0].count;
-    
-    if (attemptCount >= project.attempt_limit_per_category) {
-      res.status(403).json({ 
-        error: `You have reached the attempt limit for reviews`,
-        attemptsRemaining: 0
-      });
-      return;
-    }
     
     const attemptNumber = attemptCount + 1;
     
@@ -374,12 +376,10 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     
     const updatedTokens = updatedPlayerResult.rows[0];
     
-    const attemptsRemaining = project.attempt_limit_per_category - attemptNumber;
-    
     res.json({
       reviews: savedAttempts,
       finalScore: sdkResult.final_score || 0,
-      attemptsRemaining,
+      attemptsRemaining: updatedTokens.review_tokens,
       tokens: updatedTokens,
       cooldownMs: 2 * 60 * 1000 // 2 minutes
     });
