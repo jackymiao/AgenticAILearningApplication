@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ShieldTokenIcon } from './TokenIcons';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+// Use import.meta for Vite, process.env for tests
+const API_BASE = typeof process !== 'undefined' && process.env.VITE_API_BASE 
+  ? process.env.VITE_API_BASE 
+  : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) || '/api';
 
 export default function DefenseModal({ 
   attackId, 

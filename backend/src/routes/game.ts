@@ -1,14 +1,37 @@
 import express, { Request, Response } from 'express';
 import pool, { normalizeProjectCode, normalizeUserName } from '../db/index.js';
 import type { Application } from 'express';
+import type { Project } from '../types.js';
 
 const router = express.Router();
+
+async function ensureProjectEnabled(code: string, res: Response): Promise<boolean> {
+  const result = await pool.query<Pick<Project, 'enabled'>>(
+    'SELECT enabled FROM projects WHERE code = $1',
+    [code]
+  );
+
+  if (result.rows.length === 0) {
+    res.status(404).json({ error: 'Project not found' });
+    return false;
+  }
+
+  if (!result.rows[0].enabled) {
+    res.status(403).json({ error: 'This project is currently disabled' });
+    return false;
+  }
+
+  return true;
+}
 
 // Initialize or get player state
 router.post('/projects/:code/player/init', async (req: Request, res: Response): Promise<void> => {
   try {
     const code = normalizeProjectCode(req.params.code);
     const { userName } = req.body;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!userName) {
       res.status(400).json({ error: 'userName is required' });
@@ -72,6 +95,9 @@ router.post('/projects/:code/heartbeat', async (req: Request, res: Response): Pr
   try {
     const code = normalizeProjectCode(req.params.code);
     const { userName, sessionId } = req.body;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!userName || !sessionId) {
       res.status(400).json({ error: 'userName and sessionId are required' });
@@ -101,6 +127,9 @@ router.get('/projects/:code/active-players', async (req: Request, res: Response)
   try {
     const code = normalizeProjectCode(req.params.code);
     const currentUserName = req.query.userName as string;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!currentUserName) {
       res.status(400).json({ error: 'userName is required' });
@@ -153,6 +182,9 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
   try {
     const code = normalizeProjectCode(req.params.code);
     const { attackerName, targetName } = req.body;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!attackerName || !targetName) {
       res.status(400).json({ error: 'attackerName and targetName are required' });
@@ -268,6 +300,9 @@ router.post('/projects/:code/defend', async (req: Request, res: Response): Promi
   try {
     const code = normalizeProjectCode(req.params.code);
     const { attackId, useShield } = req.body;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!attackId || useShield === undefined) {
       res.status(400).json({ error: 'attackId and useShield are required' });

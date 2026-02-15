@@ -28,4 +28,9 @@ export function normalizeProjectCode(code: string): string {
   return code.trim().toUpperCase();
 }
 
+// Helper function to normalize student IDs
+export function normalizeStudentId(studentId: string): string {
+  return studentId.replace(/\s+/g, '').toUpperCase();
+}
+
 export default pool;

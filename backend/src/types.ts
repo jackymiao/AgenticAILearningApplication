@@ -17,9 +17,20 @@ export interface Project {
   attempt_limit_per_category: number;
   review_cooldown_seconds: number;
   enable_feedback: boolean;
+  enabled: boolean;
   created_by_admin_id: string | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface ProjectStudent {
+  id: string;
+  project_code: string;
+  student_name: string;
+  student_name_norm: string;
+  student_id: string;
+  student_id_norm: string;
+  created_at: Date;
 }
 
 export interface Submission {

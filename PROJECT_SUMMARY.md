@@ -5,11 +5,12 @@
 A complete full-stack application for AI-powered essay grading with the following capabilities:
 
 ### ✅ Backend (Express + PostgreSQL)
-- **Authentication System**: Secure admin login with bcrypt, session management
-- **Database Schema**: 5 tables (admins, projects, submissions, review_attempts, sessions)
-- **Public API**: Project access, user state tracking, AI review submission, final submission
+- **Authentication System**: Secure admin signup/login with access codes, session management
+- **Database Schema**: 9 tables (admin_users, projects, submissions, review_attempts, session, player_state, active_sessions, attacks, feedback tables)
+- **Public API**: Project access, user state tracking, AI review submission, final submission, leaderboard
 - **Admin API**: Full CRUD for projects, submission viewing and grading
-- **AI Integration**: OpenAI Agent Builder (Assistants API) with dual-mode support
+- **Game API**: Tokens, attacks/defense, active players, heartbeats
+- **AI Integration**: OpenAI Agents SDK workflow (content/structure/mechanics)
 - **Security**: Access code protected admin signup, session-based auth, input validation
 
 ### ✅ Frontend (React + Vite)
@@ -24,6 +25,7 @@ A complete full-stack application for AI-powered essay grading with the followin
   - Submissions list with sorting
   - Detailed submission view with review history
   - Manual grading with autosave
+  - Feedback management page
 - **Responsive Design**: Centered 1200px max-width layout, mobile-friendly
 - **State Management**: React Context for authentication
 - **API Client**: Centralized error handling, cookie-based sessions
@@ -35,16 +37,18 @@ A complete full-stack application for AI-powered essay grading with the followin
 - ✅ YouTube video embedding
 - ✅ Essay writing with live word count
 - ✅ Word limit enforcement
-- ✅ AI reviews in 4 categories (grammar, structure, style, content)
+- ✅ AI reviews in 3 categories (content, structure, mechanics)
 - ✅ Attempt limits per category
 - ✅ Review history display
 - ✅ One-time final submission
 - ✅ Submission prevention after final submit
+- ✅ Gamified tokens (review, attack, shield)
+- ✅ Attacks and defense with 15-second timer
+- ✅ Real-time updates via WebSocket
 
 **For Admins**:
 - ✅ Secure login with access code signup
 - ✅ Project creation with customizable settings
-- ✅ Two AI modes (single agent vs. multi-agent)
 - ✅ Project editing
 - ✅ Submission viewing with multiple sort options
 - ✅ Full essay and review history display
@@ -53,10 +57,8 @@ A complete full-stack application for AI-powered essay grading with the followin
 - ✅ Instant save button
 
 **AI Integration**:
-- ✅ Agent A mode: Single agent for all categories
-- ✅ Agent B mode: Specialized agents per category
-- ✅ Automatic agent selection based on project config
-- ✅ Context passing (user, essay, category, attempt, project)
+- ✅ Agents workflow for content/structure/mechanics
+- ✅ Context passing (user, essay, previous attempts)
 - ✅ JSON response parsing
 - ✅ Error handling and display
 - ✅ Result storage in database
@@ -69,6 +71,7 @@ A complete full-stack application for AI-powered essay grading with the followin
 - ✅ Review attempt tracking
 - ✅ Relationship integrity (foreign keys, cascades)
 - ✅ Performance indexes
+- ✅ Token and attack tracking for game system
 
 ## 📁 File Structure
 
@@ -78,18 +81,23 @@ AgenticAILearning/
 │   ├── src/
 │   │   ├── db/
 │   │   │   ├── schema.sql           # PostgreSQL schema
-│   │   │   ├── index.js             # DB connection pool
-│   │   │   └── migrate.js           # Migration runner
+│   │   │   ├── index.ts             # DB connection pool
+│   │   │   └── migrate.ts           # Migration runner
 │   │   ├── routes/
-│   │   │   ├── auth.js              # Auth endpoints
-│   │   │   ├── public.js            # Public endpoints
-│   │   │   └── admin.js             # Admin endpoints
+│   │   │   ├── auth.ts              # Auth endpoints
+│   │   │   ├── public.ts            # Public endpoints
+│   │   │   ├── admin.ts             # Admin endpoints
+│   │   │   ├── game.ts              # Game endpoints
+│   │   │   ├── feedback.ts          # Feedback endpoints
+│   │   │   └── test.ts              # Test endpoints
 │   │   ├── services/
-│   │   │   ├── auth.js              # Auth logic
-│   │   │   └── agentBuilder.js      # AI agent calls
+│   │   │   └── auth.ts              # Auth logic
+│   │   ├── sdk/
+│   │   │   └── reviewSdk.ts         # AI workflow
 │   │   ├── middleware/
-│   │   │   └── auth.js              # requireAdmin middleware
-│   │   └── index.js                 # Main server
+│   │   │   └── auth.ts              # requireAdmin middleware
+│   │   ├── websocket.ts             # WebSocket server
+│   │   └── index.ts                 # Main server
 │   ├── package.json                 # Dependencies
 │   └── .env.example                 # Environment template
 │
@@ -114,11 +122,11 @@ AgenticAILearning/
 │   │   │       └── SubmissionDetail.jsx   # Grading page
 │   │   ├── store/
 │   │   │   └── AuthContext.jsx     # Auth state
-│   │   ├── App.jsx                 # Router + routes
+│   │   ├── App.tsx                 # Router + routes
 │   │   ├── main.jsx                # React entry
 │   │   └── index.css               # Global styles
 │   ├── index.html                   # HTML template
-│   ├── vite.config.js              # Vite config
+│   ├── vite.config.ts              # Vite config
 │   ├── package.json                # Dependencies
 │   └── .env.example                # Environment template
 │
@@ -136,6 +144,7 @@ AgenticAILearning/
 - `GET /api/public/projects/:code/user-state` - Get user state
 - `POST /api/public/projects/:code/reviews` - Submit AI review request
 - `POST /api/public/projects/:code/submissions/final` - Submit final essay
+- `GET /api/public/projects/:code/leaderboard` - Get leaderboard
 
 ### Auth
 - `POST /api/auth/admin/signup` - Create admin (requires access code)
@@ -149,8 +158,15 @@ AgenticAILearning/
 - `GET /api/admin/projects/:code` - Get project
 - `PUT /api/admin/projects/:code` - Update project
 - `GET /api/admin/projects/:code/submissions` - List submissions
-- `GET /api/admin/submissions/:id` - Get submission
-- `PATCH /api/admin/submissions/:id/grading` - Update grading
+- `GET /api/admin/projects/:code/submissions/:id` - Get submission
+- `PATCH /api/admin/projects/:code/submissions/:id/score` - Update grading
+
+### Game (No Auth Required)
+- `POST /api/game/projects/:code/player/init` - Initialize tokens
+- `POST /api/game/projects/:code/heartbeat` - Update active session
+- `GET /api/game/projects/:code/active-players` - List active players
+- `POST /api/game/projects/:code/attack` - Initiate attack
+- `POST /api/game/projects/:code/defend` - Defend attack
 
 ## 🔐 Environment Variables
 
@@ -159,10 +175,11 @@ AgenticAILearning/
 DATABASE_URL=postgresql://...
 SESSION_SECRET=random-string
 ADMIN_SIGNUP_CODE=your-code
+SUPER_ADMIN_CODE=your-super-admin-code
 OPENAI_API_KEY=sk-...
 PORT=3000
 NODE_ENV=development
-FRONTEND_URL=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173
 ```
 
 ### Frontend (.env)
@@ -194,10 +211,13 @@ cd backend && npm run db:migrate
 ## 📊 Database Schema
 
 **admin_users**: Admin accounts  
-**projects**: Project configs with agent IDs  
+**projects**: Project configs  
 **submissions**: Final student submissions  
 **review_attempts**: AI review history  
 **session**: Express sessions  
+**player_state**: Tokens and cooldowns  
+**active_sessions**: Online player tracking  
+**attacks**: Attack/defense records  
 
 ## 🎯 Key Design Decisions
 
@@ -252,7 +272,7 @@ Potential improvements (not implemented):
 
 ## 🎓 Usage Flow
 
-1. **Admin** creates project with agent IDs
+1. **Admin** creates project with settings (attempt limits, cooldown, etc.)
 2. **Admin** shares 6-character project code
 3. **Student** enters code, accesses project
 4. **Student** writes essay with word count tracking
@@ -266,5 +286,5 @@ Potential improvements (not implemented):
 ---
 
 **Status**: ✅ Complete and ready for use  
-**Last Updated**: January 10, 2026  
-**Technologies**: React 18, Express, PostgreSQL, OpenAI Assistants API
+**Last Updated**: February 9, 2026  
+**Technologies**: React 18, Express, PostgreSQL, OpenAI Agents SDK

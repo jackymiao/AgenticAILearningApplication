@@ -1,3 +1,4 @@
+import React from 'react';
 import { ReviewTokenIcon, ShieldTokenIcon, AttackTokenIcon } from './TokenIcons';
 
 export default function TokenDisplay({ reviewTokens, attackTokens, shieldTokens }) {

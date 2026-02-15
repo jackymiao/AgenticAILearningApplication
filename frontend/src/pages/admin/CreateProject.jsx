@@ -7,6 +7,8 @@ export default function CreateProject() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [importError, setImportError] = useState('');
+  const [studentFile, setStudentFile] = useState(null);
   
   const [formData, setFormData] = useState({
     code: '',
@@ -27,6 +29,7 @@ export default function CreateProject() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setImportError('');
     setLoading(true);
 
     console.log('[CREATE PROJECT FORM] Submitting with data:', formData);
@@ -34,6 +37,17 @@ export default function CreateProject() {
     try {
       const result = await adminApi.createProject(formData);
       console.log('[CREATE PROJECT FORM] Success:', result);
+
+      if (studentFile) {
+        try {
+          await adminApi.importStudents(result.code || formData.code, studentFile);
+        } catch (importErr) {
+          setImportError(importErr.message || 'Failed to import student roster');
+          setLoading(false);
+          return;
+        }
+      }
+
       navigate('/admin');
     } catch (err) {
       console.error('[CREATE PROJECT FORM] Error:', err);
@@ -165,7 +179,20 @@ export default function CreateProject() {
               </label>
             </div>
 
+            <div style={{ marginBottom: '20px' }}>
+              <label>Student Roster (Optional)</label>
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={(e) => setStudentFile(e.target.files?.[0] || null)}
+              />
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '6px' }}>
+                Upload a CSV or Excel file with a single header: <strong>name</strong>. Importing replaces any existing roster.
+              </div>
+            </div>
+
             {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}
+            {importError && <div className="error" style={{ marginBottom: '16px' }}>{importError}</div>}
 
             <div style={{ display: 'flex', gap: '12px' }}>
               <button type="submit" className="primary" disabled={loading}>

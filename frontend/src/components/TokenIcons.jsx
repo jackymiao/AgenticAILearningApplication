@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Gold bag icon for review tokens
 export function ReviewTokenIcon({ size = 24 }) {
   return (

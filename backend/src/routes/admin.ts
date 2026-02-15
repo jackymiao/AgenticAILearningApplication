@@ -1,9 +1,50 @@
 import express, { Request, Response } from 'express';
-import pool, { normalizeProjectCode } from '../db/index.js';
+import multer from 'multer';
+import path from 'path';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+import pool, { normalizeProjectCode, normalizeStudentId, normalizeUserName } from '../db/index.js';
 import { requireAdmin } from '../middleware/auth.js';
-import type { Project, Submission, ReviewAttempt, ReviewCategory, ProjectFeedback } from '../types.js';
+import type { Project, Submission, ReviewAttempt, ReviewCategory, ProjectFeedback, ProjectStudent } from '../types.js';
 
 const router = express.Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+const allowedRosterExtensions = new Set(['.csv', '.xlsx', '.xls']);
+
+function getNameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'XX';
+  const first = parts[0][0] || 'X';
+  const last = (parts.length > 1 ? parts[parts.length - 1][0] : parts[0][0]) || 'X';
+  return `${first}${last}`.toUpperCase();
+}
+
+function generateStudentId(name: string, usedIds: Set<string>): string {
+  const initials = getNameInitials(name);
+  let studentId = '';
+  let attempts = 0;
+  do {
+    const digits = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    studentId = `${initials}${digits}`;
+    attempts += 1;
+  } while (usedIds.has(studentId) && attempts < 10000);
+  usedIds.add(studentId);
+  return studentId;
+}
+
+function validateHeaderKeys(keys: string[]): string | null {
+  if (keys.length === 0) return 'Missing header row';
+  const normalized = keys.map(k => k.trim().toLowerCase()).filter(Boolean);
+  if (normalized.length !== 1 || normalized[0] !== 'name') {
+    return 'Invalid header. Only a single "name" column is allowed.';
+  }
+  return null;
+}
 
 // Apply admin auth to all routes
 router.use(requireAdmin);
@@ -18,7 +59,7 @@ router.get('/projects', async (req: Request, res: Response): Promise<void> => {
     
     if (isSuperAdmin) {
       // Super admin sees all projects
-      query = `SELECT p.code, p.title, p.description, p.created_at, p.updated_at,
+      query = `SELECT p.code, p.title, p.description, p.enabled, p.created_at, p.updated_at,
                       a.username as created_by
                FROM projects p
                LEFT JOIN admin_users a ON p.created_by_admin_id = a.id
@@ -26,7 +67,7 @@ router.get('/projects', async (req: Request, res: Response): Promise<void> => {
       params = [];
     } else {
       // Regular admin sees only their own projects
-      query = `SELECT p.code, p.title, p.description, p.created_at, p.updated_at,
+      query = `SELECT p.code, p.title, p.description, p.enabled, p.created_at, p.updated_at,
                       a.username as created_by
                FROM projects p
                LEFT JOIN admin_users a ON p.created_by_admin_id = a.id
@@ -80,7 +121,8 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       wordLimit,
       attemptLimitPerCategory,
       reviewCooldownSeconds,
-      enableFeedback
+      enableFeedback,
+      enabled
     } = req.body;
     
     // Validate required fields
@@ -107,15 +149,16 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       wordLimit: Number(wordLimit) || 150,
       attemptLimitPerCategory: Number(attemptLimitPerCategory) || 3,
       reviewCooldownSeconds: Number(reviewCooldownSeconds) || 120,
-      adminId: req.session.adminId
+      adminId: req.session.adminId,
+      enabled: enabled !== false && enabled !== 'false'
     });
     
     const result = await pool.query<Project>(
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
-        review_cooldown_seconds, enable_feedback, created_by_admin_id
+        review_cooldown_seconds, enable_feedback, enabled, created_by_admin_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         codeNorm,
@@ -126,6 +169,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
         Number(attemptLimitPerCategory) || 3,
         Number(reviewCooldownSeconds) || 120,
         enableFeedback === true || enableFeedback === 'true',
+        enabled !== false && enabled !== 'false',
         req.session.adminId
       ]
     );
@@ -192,6 +236,167 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
   } catch (error) {
     console.error('Update project error:', error);
     res.status(500).json({ error: 'Failed to update project' });
+  }
+});
+
+// Update project enabled status
+router.patch('/projects/:code/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    const { enabled } = req.body;
+
+    const result = await pool.query<Project>(
+      `UPDATE projects
+       SET enabled = $2,
+           updated_at = NOW()
+       WHERE code = $1
+       RETURNING *`,
+      [code, enabled === true || enabled === 'true']
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update project status error:', error);
+    res.status(500).json({ error: 'Failed to update project status' });
+  }
+});
+
+// Get student roster for a project
+router.get('/projects/:code/students', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    const result = await pool.query<ProjectStudent>(
+      `SELECT id, project_code, student_name, student_id, created_at
+       FROM project_students
+       WHERE project_code = $1
+       ORDER BY created_at ASC`,
+      [code]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get students error:', error);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// Import student roster for a project (replaces existing list)
+router.post('/projects/:code/students/import', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    if (!req.file) {
+      res.status(400).json({ error: 'Roster file is required' });
+      return;
+    }
+
+    const extension = path.extname(req.file.originalname || '').toLowerCase();
+    if (!allowedRosterExtensions.has(extension)) {
+      res.status(400).json({ error: 'Invalid file type. Only .csv, .xlsx, or .xls are supported.' });
+      return;
+    }
+
+    let names: string[] = [];
+
+    if (extension === '.csv') {
+      const csvText = req.file.buffer.toString('utf8');
+      const parsed = Papa.parse<Record<string, string>>(csvText, {
+        header: true,
+        skipEmptyLines: true
+      });
+
+      const headerError = validateHeaderKeys(parsed.meta.fields || []);
+      if (headerError) {
+        res.status(400).json({ error: headerError });
+        return;
+      }
+
+      const nameKey = (parsed.meta.fields || []).find(field => field.trim().toLowerCase() === 'name') || 'name';
+
+      names = (parsed.data || [])
+        .map(row => row[nameKey] || '')
+        .map(value => value.trim())
+        .filter(Boolean);
+    } else {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, { defval: '' });
+
+      const headerKeys = rows.length > 0 ? Object.keys(rows[0]) : [];
+      const headerError = validateHeaderKeys(headerKeys);
+      if (headerError) {
+        res.status(400).json({ error: headerError });
+        return;
+      }
+
+      const nameKey = headerKeys.find(key => key.trim().toLowerCase() === 'name') || 'name';
+      names = rows
+        .map(row => String(row[nameKey] || '').trim())
+        .filter(Boolean);
+    }
+
+    if (names.length === 0) {
+      res.status(400).json({ error: 'No student names found in the file' });
+      return;
+    }
+
+    const usedIds = new Set<string>();
+    const students = names.map(name => {
+      const studentId = generateStudentId(name, usedIds);
+      return {
+        student_name: name,
+        student_name_norm: normalizeUserName(name),
+        student_id: studentId,
+        student_id_norm: normalizeStudentId(studentId)
+      };
+    });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM project_students WHERE project_code = $1', [code]);
+
+      const values: string[] = [];
+      const params: any[] = [];
+      students.forEach((student, index) => {
+        const offset = index * 5;
+        values.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+        params.push(
+          code,
+          student.student_name,
+          student.student_name_norm,
+          student.student_id,
+          student.student_id_norm
+        );
+      });
+
+      await client.query(
+        `INSERT INTO project_students (project_code, student_name, student_name_norm, student_id, student_id_norm)
+         VALUES ${values.join(', ')}`,
+        params
+      );
+
+      await client.query('COMMIT');
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      throw dbError;
+    } finally {
+      client.release();
+    }
+
+    res.json({
+      count: students.length,
+      students: students.map(student => ({
+        student_name: student.student_name,
+        student_id: student.student_id
+      }))
+    });
+  } catch (error) {
+    console.error('Import students error:', error);
+    res.status(500).json({ error: 'Failed to import students' });
   }
 });
 

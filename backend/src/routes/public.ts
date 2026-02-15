@@ -1,14 +1,36 @@
 import express, { Request, Response } from 'express';
-import pool, { normalizeProjectCode, normalizeUserName } from '../db/index.js';
+import pool, { normalizeProjectCode, normalizeUserName, normalizeStudentId } from '../db/index.js';
 import { runWorkflow } from '../sdk/reviewSdk.js';
 import type { Project, ReviewAttempt, ReviewCategory, UserState } from '../types.js';
 
 const router = express.Router();
 
+async function ensureProjectEnabled(code: string, res: Response): Promise<boolean> {
+  const result = await pool.query<Pick<Project, 'enabled'>>(
+    'SELECT enabled FROM projects WHERE code = $1',
+    [code]
+  );
+
+  if (result.rows.length === 0) {
+    res.status(404).json({ error: 'Project not found' });
+    return false;
+  }
+
+  if (!result.rows[0].enabled) {
+    res.status(403).json({ error: 'This project is currently disabled' });
+    return false;
+  }
+
+  return true;
+}
+
 // Get project information
 router.get('/projects/:code', async (req: Request, res: Response): Promise<void> => {
   try {
     const code = normalizeProjectCode(req.params.code);
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     const result = await pool.query<Project>(
       `SELECT code, title, description, youtube_url, word_limit, attempt_limit_per_category, enable_feedback
@@ -29,11 +51,52 @@ router.get('/projects/:code', async (req: Request, res: Response): Promise<void>
   }
 });
 
+// Validate student ID for project access
+router.post('/projects/:code/validate-student', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    const { studentId } = req.body;
+
+    if (!studentId) {
+      res.status(400).json({ error: 'studentId is required' });
+      return;
+    }
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
+
+    const studentIdNorm = normalizeStudentId(studentId);
+
+    const result = await pool.query(
+      `SELECT student_name, student_id
+       FROM project_students
+       WHERE project_code = $1 AND student_id_norm = $2`,
+      [code, studentIdNorm]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Student ID not found' });
+      return;
+    }
+
+    res.json({
+      studentName: result.rows[0].student_name,
+      studentId: result.rows[0].student_id
+    });
+  } catch (error) {
+    console.error('Validate student error:', error);
+    res.status(500).json({ error: 'Failed to validate student ID' });
+  }
+});
+
 // Get user state for a project
 router.get('/projects/:code/user-state', async (req: Request, res: Response): Promise<void> => {
   try {
     const code = normalizeProjectCode(req.params.code);
     const userName = req.query.userName as string;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!userName) {
       res.status(400).json({ error: 'userName is required' });
@@ -115,6 +178,9 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
   try {
     const code = normalizeProjectCode(req.params.code);
     const { userName, essay } = req.body;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!userName || !essay) {
       res.status(400).json({ error: 'userName and essay are required' });
@@ -399,6 +465,9 @@ router.post('/projects/:code/submissions/final', async (req: Request, res: Respo
   try {
     const code = normalizeProjectCode(req.params.code);
     const { userName, essay } = req.body;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     if (!userName || !essay) {
       res.status(400).json({ error: 'userName and essay are required' });
@@ -445,6 +514,8 @@ router.post('/projects/:code/submissions/final', async (req: Request, res: Respo
 router.get('/projects/:code/leaderboard', async (req: Request, res: Response): Promise<void> => {
   try {
     const code = normalizeProjectCode(req.params.code);
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
     
     // Verify project exists
     const projectResult = await pool.query(

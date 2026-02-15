@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [selectedProjects, setSelectedProjects] = useState([]);
   const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState({});
 
   useEffect(() => {
     loadProjects();
@@ -62,6 +63,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleStatus = async (project) => {
+    setError('');
+    setToggling(prev => ({ ...prev, [project.code]: true }));
+    try {
+      const updated = await adminApi.updateProjectStatus(project.code, !project.enabled);
+      setProjects(prev => prev.map(p => (p.code === project.code ? { ...p, enabled: updated.enabled } : p)));
+    } catch (err) {
+      setError(err.message || 'Failed to update project status');
+    } finally {
+      setToggling(prev => ({ ...prev, [project.code]: false }));
+    }
+  };
+
   if (loading) {
     return (
       <PageContainer>
@@ -112,6 +126,7 @@ export default function AdminDashboard() {
                 </th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Code</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Title</th>
+                <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Created By</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Created</th>
                 <th style={{ padding: '12px', textAlign: 'right' }}>Actions</th>
@@ -120,7 +135,7 @@ export default function AdminDashboard() {
             <tbody>
               {projects.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#666' }}>
+                  <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#666' }}>
                     No projects yet. Create your first project!
                   </td>
                 </tr>
@@ -139,6 +154,20 @@ export default function AdminDashboard() {
                       {project.code}
                     </td>
                     <td style={{ padding: '12px' }}>{project.title}</td>
+                    <td style={{ padding: '12px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          checked={project.enabled !== false}
+                          onChange={() => handleToggleStatus(project)}
+                          disabled={toggling[project.code]}
+                          style={{ cursor: toggling[project.code] ? 'not-allowed' : 'pointer' }}
+                        />
+                        <span style={{ fontSize: '12px', color: project.enabled !== false ? '#28a745' : '#dc3545' }}>
+                          {project.enabled !== false ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </label>
+                    </td>
                     <td style={{ padding: '12px' }}>{project.created_by || 'N/A'}</td>
                     <td style={{ padding: '12px' }}>
                       {new Date(project.created_at).toLocaleDateString()}

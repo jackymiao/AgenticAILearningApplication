@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import Leaderboard from '../components/Leaderboard';
 import ReviewLoadingAnimation from '../components/ReviewLoadingAnimation';
@@ -14,6 +14,7 @@ export default function ProjectPage() {
   const { code } = useParams();
   const [project, setProject] = useState(null);
   const [userName, setUserName] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [userNameSubmitted, setUserNameSubmitted] = useState(false);
   const [essay, setEssay] = useState('');
   const [userState, setUserState] = useState(null);
@@ -37,17 +38,19 @@ export default function ProjectPage() {
   // Feedback state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
-  // Load saved username and essay from localStorage on mount
+  // Load saved student name/id and essay from localStorage on mount
   useEffect(() => {
-    const savedUserName = localStorage.getItem(`project_${code}_userName`);
+    const savedUserName = localStorage.getItem(`project_${code}_studentName`);
+    const savedStudentId = localStorage.getItem(`project_${code}_studentId`);
     const savedEssay = localStorage.getItem(`project_${code}_essay`);
     
     if (savedEssay) {
       setEssay(savedEssay);
     }
     
-    if (savedUserName) {
+    if (savedUserName && savedStudentId) {
       setUserName(savedUserName);
+      setStudentId(savedStudentId);
       setUserNameSubmitted(true);
       // Auto-load user state
       loadUserStateWithName(savedUserName);
@@ -74,8 +77,9 @@ export default function ProjectPage() {
       // Initialize player in game system
       await initializePlayerWithName(name);
     } catch (err) {
-      // If user state fails, clear saved username
-      localStorage.removeItem(`project_${code}_userName`);
+      // If user state fails, clear saved student info
+      localStorage.removeItem(`project_${code}_studentName`);
+      localStorage.removeItem(`project_${code}_studentId`);
       setUserNameSubmitted(false);
       setError(err.message);
     }
@@ -111,28 +115,6 @@ export default function ProjectPage() {
     }
   };
 
-  const loadUserState = async () => {
-    if (!userName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-    
-    try {
-      const data = await publicApi.getUserState(code, userName);
-      setUserState(data);
-      setUserNameSubmitted(true);
-      setError('');
-      
-      // Save username to localStorage
-      localStorage.setItem(`project_${code}_userName`, userName);
-      
-      // Initialize player in game system
-      await initializePlayer();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-  
   // Initialize player and get tokens
   const initializePlayer = useCallback(async () => {
     try {
@@ -459,27 +441,30 @@ export default function ProjectPage() {
           </section>
         )}
 
-        {/* Name Input */}
+        {/* Student Access */}
         {!userNameSubmitted && (
           <section style={{ marginBottom: '32px' }}>
             <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <h2 style={{ marginBottom: '16px' }}>Enter Your Name</h2>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Your name"
-                style={{ marginBottom: '16px' }}
-              />
-              <button onClick={loadUserState} className="primary">
-                Continue
-              </button>
+              <h2 style={{ marginBottom: '12px' }}>Student Access Required</h2>
+              <p style={{ marginBottom: '16px', color: '#666' }}>
+                Please return to the home page and enter your project code and student ID.
+              </p>
+              <Link to="/">
+                <button className="primary">Back to Home</button>
+              </Link>
             </div>
           </section>
         )}
 
         {userNameSubmitted && (
           <>
+            <section style={{ marginBottom: '24px' }}>
+              <div style={{ backgroundColor: 'white', padding: '16px 20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: '14px', color: '#666' }}>Signed in as</div>
+                <div style={{ fontSize: '18px', fontWeight: '600' }}>{userName}</div>
+                <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>Student ID: {studentId}</div>
+              </div>
+            </section>
             {/* Token Display */}
             {tokens && (
               <section style={{ marginBottom: '24px' }}>

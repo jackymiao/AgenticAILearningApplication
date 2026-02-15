@@ -17,6 +17,10 @@ export const auth = {
 // Public endpoints
 export const publicApi = {
   getProject: (code) => apiFetch(`/public/projects/${code}`),
+  validateStudent: (code, studentId) => apiFetch(`/public/projects/${code}/validate-student`, {
+    method: 'POST',
+    body: JSON.stringify({ studentId })
+  }),
   getUserState: (code, userName) => apiFetch(`/public/projects/${code}/user-state?userName=${encodeURIComponent(userName)}`),
   submitReview: (code, userName, essay) => {
     const requestBody = { userName, essay };
@@ -72,6 +76,10 @@ export const gameApi = {
 export const adminApi = {
   getProjects: () => apiFetch('/admin/projects'),
   getProject: (code) => apiFetch(`/admin/projects/${code}`),
+  updateProjectStatus: (code, enabled) => apiFetch(`/admin/projects/${code}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled })
+  }),
   createProject: (project) => apiFetch('/admin/projects', {
     method: 'POST',
     body: JSON.stringify(project)
@@ -80,6 +88,23 @@ export const adminApi = {
     method: 'PUT',
     body: JSON.stringify(project)
   }),
+  importStudents: (code, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return fetch(`${import.meta.env.VITE_API_BASE || '/api'}/admin/projects/${code}/students/import`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    }).then(async (response) => {
+      const contentType = response.headers.get('content-type');
+      const data = contentType && contentType.includes('application/json') ? await response.json() : await response.text();
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed with status ${response.status}`);
+      }
+      return data;
+    });
+  },
+  getStudents: (code) => apiFetch(`/admin/projects/${code}/students`),
   deleteProjects: (codes) => apiFetch('/admin/projects', {
     method: 'DELETE',
     body: JSON.stringify({ codes })

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageContainer from '../../components/PageContainer';
 import { adminApi } from '../../api/endpoints';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
 
 export default function EditProject() {
   const { code } = useParams();
@@ -9,11 +11,17 @@ export default function EditProject() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [studentFile, setStudentFile] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [studentsError, setStudentsError] = useState('');
+  const [importing, setImporting] = useState(false);
   
   const [formData, setFormData] = useState(null);
 
   useEffect(() => {
     loadProject();
+    loadStudents();
   }, [code]);
 
   const loadProject = async () => {
@@ -33,6 +41,85 @@ export default function EditProject() {
       setError(err.message);
       setLoading(false);
     }
+  };
+
+  const loadStudents = async () => {
+    setStudentsLoading(true);
+    try {
+      const data = await adminApi.getStudents(code);
+      setStudents(data);
+      setStudentsError('');
+      setStudentsLoading(false);
+    } catch (err) {
+      setStudentsError(err.message || 'Failed to load students');
+      setStudentsLoading(false);
+    }
+  };
+
+  const handleImportStudents = async () => {
+    if (!studentFile) {
+      setStudentsError('Please select a roster file to import');
+      return;
+    }
+    setStudentsError('');
+    setImporting(true);
+    try {
+      const result = await adminApi.importStudents(code, studentFile);
+      setStudents(result.students || []);
+      setStudentFile(null);
+    } catch (err) {
+      setStudentsError(err.message || 'Failed to import students');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadCsv = () => {
+    const header = 'name,id';
+    const rows = students.map(student => `${student.student_name},${student.student_id}`);
+    const csvContent = [header, ...rows].join('\n');
+    downloadBlob(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), `project_${code}_students.csv`);
+  };
+
+  const handleDownloadXlsx = () => {
+    const worksheet = XLSX.utils.json_to_sheet(
+      students.map(student => ({ name: student.student_name, id: student.student_id }))
+    );
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    const data = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    downloadBlob(
+      new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      `project_${code}_students.xlsx`
+    );
+  };
+
+  const handleDownloadPdf = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text(`Project ${code} Student Roster`, 10, 15);
+    doc.setFontSize(11);
+    let y = 25;
+    students.forEach((student, index) => {
+      doc.text(`${index + 1}. ${student.student_name} - ${student.student_id}`, 10, y);
+      y += 7;
+      if (y > 280) {
+        doc.addPage();
+        y = 15;
+      }
+    });
+    doc.save(`project_${code}_students.pdf`);
   };
 
   const handleChange = (e) => {
@@ -183,6 +270,62 @@ export default function EditProject() {
                   </div>
                 </div>
               </label>
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fdfdfd', borderRadius: '6px', border: '1px solid #eee' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Student Roster</div>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
+                Upload a CSV or Excel file with a single header: <strong>name</strong>. Importing replaces the existing roster.
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={(e) => setStudentFile(e.target.files?.[0] || null)}
+                />
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={handleImportStudents}
+                  disabled={importing}
+                >
+                  {importing ? 'Importing...' : 'Import Roster'}
+                </button>
+              </div>
+
+              {studentsError && <div className="error" style={{ marginBottom: '12px' }}>{studentsError}</div>}
+
+              {studentsLoading ? (
+                <div style={{ color: '#666', fontSize: '14px' }}>Loading roster...</div>
+              ) : students.length === 0 ? (
+                <div style={{ color: '#666', fontSize: '14px' }}>No students imported yet.</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    <button type="button" className="secondary" onClick={handleDownloadCsv}>Download CSV</button>
+                    <button type="button" className="secondary" onClick={handleDownloadXlsx}>Download Excel</button>
+                    <button type="button" className="secondary" onClick={handleDownloadPdf}>Download PDF</button>
+                  </div>
+                  <div style={{ maxHeight: '240px', overflow: 'auto', border: '1px solid #eee', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f5f5f5' }}>
+                          <th style={{ textAlign: 'left', padding: '8px' }}>Name</th>
+                          <th style={{ textAlign: 'left', padding: '8px' }}>Student ID</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {students.map(student => (
+                          <tr key={student.student_id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '8px' }}>{student.student_name}</td>
+                            <td style={{ padding: '8px', fontFamily: 'monospace' }}>{student.student_id}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
 
             {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}

@@ -17,11 +17,25 @@ CREATE TABLE IF NOT EXISTS projects (
   youtube_url TEXT,
   word_limit INTEGER NOT NULL DEFAULT 150,
   attempt_limit_per_category INTEGER NOT NULL DEFAULT 3,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
   
   -- Audit fields
   created_by_admin_id UUID REFERENCES admin_users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Create project_students table
+CREATE TABLE IF NOT EXISTS project_students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_code CHAR(6) NOT NULL REFERENCES projects(code) ON DELETE CASCADE,
+  student_name TEXT NOT NULL,
+  student_name_norm TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  student_id_norm TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT unique_project_student_id UNIQUE (project_code, student_id_norm)
 );
 
 -- Create submissions table
@@ -127,3 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_active_sessions_lookup ON active_sessions(project
 CREATE INDEX IF NOT EXISTS idx_active_sessions_last_seen ON active_sessions(last_seen);
 CREATE INDEX IF NOT EXISTS idx_attacks_target ON attacks(project_code, target_name_norm, status);
 CREATE INDEX IF NOT EXISTS idx_attacks_pending ON attacks(status, expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_project_students_project ON project_students(project_code);
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE;

@@ -1,0 +1,655 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/services/sdks/grammar.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">src/services/sdks</a> grammar.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/37</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/18</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/6</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/35</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { z } from "zod";
+import { RunContext, Agent, AgentInputItem, Runner, withTrace } from "@openai/agents";
+&nbsp;
+const GrammargraderSchema = <span class="cstat-no" title="statement not covered" >z.object({ name: z.string(), user_name: z.string(), attempt_number: z.number(), score: z.number(), breakdown: z.array(z.object({ category_name: z.string(), deducted_points: z.number(), reason: z.string(), examples: z.array(z.string()) })), overview: z.string(), suggestions: z.array(z.string()) });</span>
+const ParserSchema = <span class="cstat-no" title="statement not covered" >z.object({ meta: z.object({ user_name: z.string(), attempt_number: z.number() }), current_essay: z.string(), previous_essay: z.string(), previous_score: z.number() });</span>
+type ParserOutput = z.infer&lt;typeof ParserSchema&gt;;
+interface GrammargraderContext {
+  inputOutputParsedCurrentEssay: string;
+  inputOutputParsedPreviousEssay: string;
+}
+const grammargraderInstructions = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(r</span>unContext: RunContext&lt;GrammargraderContext&gt;, _agent: Agent&lt;GrammargraderContext&gt;) =&gt; {</span>
+  const { inputOutputParsedCurrentEssay, inputOutputParsedPreviousEssay } = <span class="cstat-no" title="statement not covered" >runContext.context;</span>
+<span class="cstat-no" title="statement not covered" >  return `Evaluate the grammar quality of the current submission ${inputOutputParsedCurrentEssay} while considering the ${inputOutputParsedPreviousEssay} (if provided). Produce:</span>
+name (category name)
+score (0–100)
+breakdown (deductions with reasons + examples)
+overview (summary of essay + main grammar problems + comparison to previous attempt)
+suggestions (max 5, actionable)`
+}
+const grammargrader = <span class="cstat-no" title="statement not covered" >new Agent({</span>
+  name: "GrammarGrader",
+  instructions: grammargraderInstructions,
+  model: "gpt-4.1-nano",
+  outputType: "text" as const,
+  modelSettings: {
+    temperature: 0.75,
+    topP: 1,
+    maxTokens: 2048,
+    store: true
+  }
+});
+&nbsp;
+const parser = <span class="cstat-no" title="statement not covered" >new Agent({</span>
+  name: "Parser",
+  instructions: "You are a parser/normalizer node. Your job is to take safe input, safely parse JSON strings, apply defaults, and return one normalized JSON object for the next node. You must compare CURRENT vs PREVIOUS for progress tracking, but score CURRENT only.Return JSON only. No extra text.",
+  model: "gpt-4.1-nano",
+  outputType: ParserSchema,
+  modelSettings: {
+    temperature: 0.5,
+    topP: 1,
+    maxTokens: 2048,
+    store: true
+  }
+});
+&nbsp;
+type WorkflowInput = { input_as_text: string };
+&nbsp;
+&nbsp;
+// Main code entrypoint
+export const runWorkflow = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async </span>(workflow: WorkflowInput) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  return await withTrace("MultiAgentGrammar02", <span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
+    const state = <span class="cstat-no" title="statement not covered" >{</span>
+      parser_input_format: "&lt;&lt;&lt;USER_NAME&gt;&gt;&gt;...&lt;&lt;&lt;END_USER_NAME&gt;&gt;&gt; &lt;&lt;&lt;ATTEMPT_NUMBER&gt;&gt;&gt;...&lt;&lt;&lt;END_ATTEMPT_NUMBER&gt;&gt;&gt; &lt;&lt;&lt;ESSAY&gt;&gt;&gt;...&lt;&lt;&lt;END_ESSAY&gt;&gt;&gt; &lt;&lt;&lt;FIRST_SCORE&gt;&gt;&gt;...&lt;&lt;&lt;END_FIRST_SCORE&gt;&gt;&gt; &lt;&lt;&lt;SECOND_SCORE&gt;&gt;&gt;...&lt;&lt;&lt;END_SECOND_SCORE&gt;&gt;&gt; &lt;&lt;&lt;FIRST_SUBMISSION&gt;&gt;&gt;...&lt;&lt;&lt;END_FIRST_SUBMISSION&gt;&gt;&gt; &lt;&lt;&lt;SECOND_SUBMISSION&gt;&gt;&gt;...&lt;&lt;&lt;END_SECOND_SUBMISSION&gt;&gt;&gt;(text, may be multiline)",
+      parser_task: "Extract these fields and return them in a single JSON object:  meta.user_name (string)  meta.attempt_number (number)  current_essay (string)  previous_essay (string)  previous_result.grammar_score (number)  previous_result.suggestions_registry (array of objects)  each object: id (string), category (string), status (string)  evaluation_rules (string)",
+      parser_extraction_rules: "Extract the content between each delimiter pair exactly.  Essays and rules may contain multiple lines—preserve them exactly (don’t trim internal whitespace).  For META and PREVIOUS_RESULT, attempt to parse the extracted content as JSON:  If JSON parsing succeeds:  meta.user_name = parsed user_name or \"\" if missing  meta.attempt_number = parsed attempt_number as a number, or 0 if missing/invalid  previous_result.grammar_score = parsed grammar_score as a number, or 0 if missing/invalid  previous_result.suggestions_registry = parsed suggestions_registry if it’s an array; otherwise []  If JSON parsing fails:  set meta.user_name to \"\"  set meta.attempt_number to 0  set previous_result.grammar_score to 0  set previous_result.suggestions_registry to []  If any delimiter block is missing, set that field to a safe default:  missing essay/rules blocks → \"\"  missing registry → []  missing numbers → 0  Always return all fields with the exact keys shown below.  Do not add any explanations, comments, markdown, or extra text outside the JSON.",
+      parser_return: "{   \"meta\": {     \"user_name\": \"\",     \"attempt_number\": 0   },   \"current_essay\": \"\",   \"previous_essay\": \"\",   \"previous_result\": {     \"grammar_score\": 0,     \"suggestions_registry\": []   },   }",
+      input_rules: "You will receive:  user_name  attempt_number  essay (current submission text)  previous_essay (optional; may be empty)  previous_score (optional; may be empty)  Rules:  If previous_essay is missing/empty, still score normally, but in the overview say: \"No previous submission provided for comparison.\"  If previous_score is missing, do not invent it.",
+      grammar_scoring_rules: "Start at 100  Deduct points across the 5 fixed categories based on actual issues found.  The same repeated mistake pattern should not be deducted repeatedly; deduct once and mark it as recurring in the reason, don't be too strict.  Final score is integer 0–100.  Total deductions must equal 100 - score.",
+      breakdown_rules: "Must always output exactly 5 breakdown objects.  Categories must appear in the exact order listed above.  Each breakdown item must include:  category_name (must match exactly)  deducted_points (10 &gt; integer ≥ 0)  reason (short explanation; if 0 points, say “No significant issues found.”)  examples (0–3 short examples; empty array allowed)",
+      overview_rules: "Overview must be one paragraph that includes:  A 1–2 sentence summary of what the essay is saying (content-neutral, no rewriting)  The top grammar problems (from breakdown)  If previous submission exists: a comparison statement:  improved / same / worse  mention what changed (e.g., fewer tense errors, still run-ons)  If previous submission does not exist: explicitly say no comparison possible.",
+      suggestion_rules: "Suggestions must be:  No more than 5  Each suggestion must be actionable  Prefer pattern-level advice (fix recurring issues)  Do not rewrite the full essay  If you include example fixes, keep it one sentence only and only for illustration."
+    };
+    const conversationHistory: AgentInputItem[] = <span class="cstat-no" title="statement not covered" >[</span>
+      { role: "user", content: [{ type: "input_text", text: workflow.input_as_text }] }
+    ];
+    const runner = <span class="cstat-no" title="statement not covered" >new Runner({</span>
+      traceMetadata: {
+        __trace_source__: "agent-builder",
+        workflow_id: "wf_696570b560d48190b3151ebaff206a970afa5540c182b2e9"
+      }
+    });
+    const parserResultTemp = <span class="cstat-no" title="statement not covered" >await runner.run(</span>
+      parser,
+      [
+        ...conversationHistory,
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: `you need to use ${state.parser_input_format} to parse the  {{ ,and follow the ${state.parser_task} as your task` }
+          ]
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: `extract the content base on ${state.parser_extraction_rules}, and return the output by following ${state.parser_return} format` }
+          ]
+        }
+      ]
+    );
+<span class="cstat-no" title="statement not covered" >    conversationHistory.push(...parserResultTemp.newItems.map(<span class="fstat-no" title="function not covered" >(i</span>tem) =&gt; <span class="cstat-no" title="statement not covered" >item.rawItem)</span>);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!parserResultTemp.finalOutput) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error("Agent result is undefined");</span>
+    }
+&nbsp;
+    const parserResult = <span class="cstat-no" title="statement not covered" >{</span>
+      output_text: JSON.stringify(parserResultTemp.finalOutput),
+      output_parsed: parserResultTemp.finalOutput as unknown as ParserOutput
+    };
+    const grammargraderResultTemp = <span class="cstat-no" title="statement not covered" >await runner.run(</span>
+      grammargrader,
+      [
+        ...conversationHistory,
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: `consider ${state.input_rules} to to process input. 
+          use ${state.grammar_scoring_rules} as guideline of scoring. 
+          use ${state.breakdown_rules} for breakdown section. 
+          use ${state.overview_rules} for overview section.
+          use ${state.suggestion_rules} for suggestion section.
+          ` }
+          ]
+        },
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: `score = 100 - total deducted_points. Output JSON only (no markdown, no commentary).
+          Do not add extra keys.` }
+          ]
+        }
+      ],
+      {
+        context: {
+          inputOutputParsedCurrentEssay: parserResult.output_parsed.current_essay,
+          inputOutputParsedPreviousEssay: parserResult.output_parsed.previous_essay
+        }
+      }
+    );
+<span class="cstat-no" title="statement not covered" >    conversationHistory.push(...grammargraderResultTemp.newItems.map(<span class="fstat-no" title="function not covered" >(i</span>tem) =&gt; <span class="cstat-no" title="statement not covered" >item.rawItem)</span>);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!grammargraderResultTemp.finalOutput) {</span>
+<span class="cstat-no" title="statement not covered" >        throw new Error("Agent result is undefined");</span>
+    }
+&nbsp;
+    const grammargraderResult = <span class="cstat-no" title="statement not covered" >{</span>
+      output_text: JSON.stringify(grammargraderResultTemp.finalOutput),
+      output_parsed: grammargraderResultTemp.finalOutput
+    };
+<span class="cstat-no" title="statement not covered" >    return grammargraderResult;</span>
+  });
+}
+&nbsp;
+// Wrapper function for backend integration
+export async function <span class="fstat-no" title="function not covered" >callGrammarAgent(</span>
+  userName: string,
+  essay: string,
+  category: string,
+  attemptNumber?: number,
+  projectCode?: string,
+  wordLimit?: number,
+  previousAttempts?: any[]
+) {
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const firstPrevious = <span class="cstat-no" title="statement not covered" >previousAttempts?.[0];</span>
+    const previousScore = <span class="cstat-no" title="statement not covered" >firstPrevious?.score || 0;</span>
+    const previousEssay = <span class="cstat-no" title="statement not covered" >firstPrevious?.essay_snapshot || '';</span>
+    
+    // Format input with new delimiter format
+    const inputText = <span class="cstat-no" title="statement not covered" >`&lt;&lt;&lt;USER_NAME&gt;&gt;&gt;${userName}&lt;&lt;&lt;END_USER_NAME&gt;&gt;&gt;` +</span>
+      `&lt;&lt;&lt;ATTEMPT_NUMBER&gt;&gt;&gt;${attemptNumber || 1}&lt;&lt;&lt;END_ATTEMPT_NUMBER&gt;&gt;&gt;` +
+      `&lt;&lt;&lt;EVALUATOR_TYPE&gt;&gt;&gt;${category}&lt;&lt;&lt;END_EVALUATOR_TYPE&gt;&gt;&gt;` +
+      `&lt;&lt;&lt;ESSAY&gt;&gt;&gt;${essay}&lt;&lt;&lt;END_ESSAY&gt;&gt;&gt;` +
+      `&lt;&lt;&lt;PREVIOUS_SCORE&gt;&gt;&gt;${previousScore}&lt;&lt;&lt;END_PREVIOUS_SCORE&gt;&gt;&gt;` +
+      `&lt;&lt;&lt;PREVIOUS_ESSAY&gt;&gt;&gt;${previousEssay}&lt;&lt;&lt;END_PREVIOUS_ESSAY&gt;&gt;&gt;`;
+    
+    const workflow = <span class="cstat-no" title="statement not covered" >{ input_as_text: inputText };</span>
+    const result = <span class="cstat-no" title="statement not covered" >await runWorkflow(workflow);</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    if (!result || !result.output_parsed) {</span>
+<span class="cstat-no" title="statement not covered" >      return {</span>
+        status: 'error' as const,
+        error_message: 'Failed to get result from Grammar Agent workflow'
+      };
+    }
+&nbsp;
+    const score = (<span class="cstat-no" title="statement not covered" >result.output_parsed as any).score ?? null;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >    return {</span>
+      status: 'success' as const,
+      result_json: result.output_parsed,
+      score: score
+    };
+  } catch (error) {
+<span class="cstat-no" title="statement not covered" >    return {</span>
+      status: 'error' as const,
+      error_message: error instanceof Error ? error.message : 'Unknown error in Grammar Agent'
+    };
+  }
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-02-15T05:36:15.913Z
+            </div>
+        <script src="../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
+    </body>
+</html>
+    

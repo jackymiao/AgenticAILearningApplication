@@ -1,7 +1,7 @@
 # Agentic AI Learning Platform - Complete Documentation
 
 **Version:** 1.0.0  
-**Last Updated:** February 9, 2026  
+**Last Updated:** February 14, 2026  
 **Purpose:** Educational platform combining AI-powered essay feedback with gamified peer interactions
 
 ---
@@ -2161,6 +2161,148 @@ async function runTests() {
   console.log('✅ All tests passed');
 }
 ```
+
+### Unit Testing
+
+#### Backend Tests (Jest + Supertest)
+
+**Test Suite: 20 tests passing (100%)**
+
+**Setup:**
+```bash
+cd backend
+npm test
+```
+
+**Test Files:**
+
+1. **`src/routes/__tests__/game.test.ts`** (8 tests)
+   - Player initialization and state persistence
+   - Heartbeat mechanism for active player tracking
+   - Attack/defend game mechanics with real database
+   - Project enabled/disabled gating
+   - Token validation and updates
+   - Uses real PostgreSQL with TEST01 project code
+
+2. **`src/routes/__tests__/public.test.ts`** (4 tests)
+   - Project access validation
+   - Student ID validation against roster
+   - Disabled project blocking
+   - Column normalization (user_name_norm, project_code)
+
+3. **`src/db/__tests__/index.test.ts`** (10 tests)
+   - normalizeProjectCode() utility function
+   - normalizeUserName() utility function
+   - validateStudentInRoster() database query
+   - Test uses real database, no mocks
+
+**Configuration:**
+```javascript
+// backend/jest.config.js
+export default {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts'],
+  maxWorkers: 1 // Sequential execution to prevent race conditions
+};
+```
+
+**Key Testing Patterns:**
+- Real database integration (no mocks)
+- Sequential test execution with `--runInBand`
+- Supertest for HTTP assertions
+- beforeAll/afterAll for database setup/cleanup
+- Test database with enabled column for project gating
+
+#### Frontend Tests (Jest + React Testing Library)
+
+**Test Suite: 28 tests passing (100%)**
+
+**Setup:**
+```bash
+cd frontend
+npm test
+```
+
+**Test Files:**
+
+1. **`src/pages/__tests__/HomePage.test.jsx`** (15 tests)
+   - Project code and student ID entry
+   - Input validation (required fields, format)
+   - API integration with mocked fetch
+   - localStorage persistence (project code, student ID)
+   - Error handling for invalid inputs
+   - Navigation after successful validation
+
+2. **`src/pages/__tests__/ProjectPage.test.jsx`** (13 tests)
+   - Credential loading from localStorage
+   - Access control (blocks users without credentials)
+   - Token display and game UI
+   - Review history rendering
+   - Helper function: defaultUserState() provides mock data
+
+3. **`src/pages/admin/__tests__/AdminDashboard.test.jsx`** (10 tests)
+   - Project list rendering
+   - Enable/disable toggle operations
+   - Optimistic UI updates
+   - Error handling and rollback
+   - Helper function: getStatusCheckbox() for checkbox selection
+
+**Configuration:**
+```javascript
+// frontend/jest.config.cjs
+module.exports = {
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  transform: {
+    '^.+\\.jsx?$': 'babel-jest'
+  },
+  moduleNameMapper: {
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy'
+  }
+};
+```
+
+**ESM Compatibility:**
+- Configuration files use `.cjs` extension and `module.exports` syntax
+- Required because package.json has `"type": "module"`
+- Both `jest.config.cjs` and `babel.config.cjs` use CommonJS format
+
+**Key Testing Patterns:**
+- localStorage mocking with Storage.prototype spying
+- API mocking with jest.fn() for fetch calls
+- React Testing Library queries (getByRole, getByLabelText)
+- User event simulation with fireEvent
+- waitFor() for async operations
+- Helper functions for reusable test data
+
+**Component Fixes for Testing:**
+- Added `import React from 'react'` to TokenDisplay.jsx and TokenIcons.jsx
+- Fixed import.meta.env compatibility in AttackModal.jsx and DefenseModal.jsx
+- Proper mock structures for game state and review history
+
+**Running All Tests:**
+```bash
+# From root directory
+npm test
+
+# Run with coverage
+npm test -- --coverage
+
+# Run specific test file
+npm test -- HomePage.test.jsx
+
+# Watch mode
+npm test -- --watch
+```
+
+**Test Coverage Summary:**
+- Total: 48 tests passing (20 backend + 28 frontend)
+- Success Rate: 100%
+- Test Suites: 6 files (3 backend + 3 frontend)
+- Real database integration for backend
+- Comprehensive mocking for frontend
 
 ### Manual Testing Checklist
 
