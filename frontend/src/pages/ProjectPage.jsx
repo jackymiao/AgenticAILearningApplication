@@ -42,16 +42,18 @@ export default function ProjectPage() {
   useEffect(() => {
     const savedUserName = localStorage.getItem(`project_${code}_studentName`);
     const savedStudentId = localStorage.getItem(`project_${code}_studentId`);
-    const savedEssay = localStorage.getItem(`project_${code}_essay`);
-    
-    if (savedEssay) {
-      setEssay(savedEssay);
-    }
     
     if (savedUserName && savedStudentId) {
       setUserName(savedUserName);
       setStudentId(savedStudentId);
       setUserNameSubmitted(true);
+      
+      // Load essay for this specific user
+      const savedEssay = localStorage.getItem(`project_${code}_${savedUserName}_essay`);
+      if (savedEssay) {
+        setEssay(savedEssay);
+      }
+      
       // Auto-load user state
       loadUserStateWithName(savedUserName);
     }
@@ -59,10 +61,10 @@ export default function ProjectPage() {
 
   // Save essay to localStorage whenever it changes
   useEffect(() => {
-    if (essay && userNameSubmitted) {
-      localStorage.setItem(`project_${code}_essay`, essay);
+    if (essay && userNameSubmitted && userName) {
+      localStorage.setItem(`project_${code}_${userName}_essay`, essay);
     }
-  }, [essay, code, userNameSubmitted]);
+  }, [essay, code, userNameSubmitted, userName]);
 
   useEffect(() => {
     loadProject();

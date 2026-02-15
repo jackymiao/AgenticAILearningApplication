@@ -255,7 +255,7 @@ describe('ProjectPage', () => {
     it('should load saved essay from localStorage', async () => {
       localStorage.setItem('project_TEST01_studentName', 'Test User');
       localStorage.setItem('project_TEST01_studentId', 'TU1234');
-      localStorage.setItem('project_TEST01_essay', 'This is my saved essay');
+      localStorage.setItem('project_TEST01_Test User_essay', 'This is my saved essay');
       
       publicApi.getProject.mockResolvedValue({
         code: 'TEST01',
