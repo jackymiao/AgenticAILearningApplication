@@ -277,7 +277,18 @@ export default function ProjectPage() {
       
       // Reload user state to get updated attempts and history
       const updatedState = await publicApi.getUserState(code, userName);
-      setUserState(updatedState);
+      const hasHistory = updatedState?.reviewHistory && Object.values(updatedState.reviewHistory).some(list => Array.isArray(list) && list.length > 0);
+      if (!hasHistory && Array.isArray(result.reviews) && result.reviews.length > 0) {
+        const fallbackHistory = { content: [], structure: [], mechanics: [] };
+        result.reviews.forEach((review) => {
+          if (fallbackHistory[review.category]) {
+            fallbackHistory[review.category].push(review);
+          }
+        });
+        setUserState({ ...updatedState, reviewHistory: fallbackHistory });
+      } else {
+        setUserState(updatedState);
+      }
       
       // Trigger leaderboard refresh
       setLeaderboardRefresh(prev => prev + 1);
