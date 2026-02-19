@@ -24,6 +24,7 @@ export default function ProjectPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
+  const [showCongratsMessage, setShowCongratsMessage] = useState(false);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
   
   // Game state
@@ -299,6 +300,7 @@ export default function ProjectPage() {
     
     try {
       await publicApi.submitFinal(code, userName, essay);
+      setShowCongratsMessage(true);
       
       // Reload user state
       const updatedState = await publicApi.getUserState(code, userName);
@@ -621,6 +623,24 @@ export default function ProjectPage() {
               onDefend={handleDefenseResponse}
               onClose={handleDefenseClose}
             />
+
+            {/* Congratulations Message */}
+            {showCongratsMessage && (
+              <section style={{ marginBottom: '16px' }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #FFF7E6, #FFFFFF)',
+                  border: '2px solid #F4C542',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '26px', fontWeight: '700', color: '#9C6B00' }}>
+                    🎉 Congratulations!!! {userName}
+                  </div>
+                </div>
+              </section>
+            )}
 
             {/* Final Score Display */}
             {finalScore !== null && (
