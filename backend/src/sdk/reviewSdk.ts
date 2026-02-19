@@ -10,7 +10,11 @@ interface ContentgraderContext {
 }
 const contentgraderInstructions = (runContext: RunContext<ContentgraderContext>, _agent: Agent<ContentgraderContext>) => {
   const { stateCurrentEssay, statePreviousEssay } = runContext.context;
-  return `Evaluate ${stateCurrentEssay} for storytelling and self-branding content, and if ${statePreviousEssay} exists and is non-empty, read it only to judge whether strengths/weaknesses are recurring and reflect that insight in the overview and suggestions (but do not output comparison fields). Score only the current essay from 0–100 based on story arc (situation→challenge→action→result), authentic voice, concrete evidence, and clear personal brand value for the audience. Do not rewrite the essay. Keep feedback concise and actionable.`
+  return `Evaluate ${stateCurrentEssay} for originality, creativity, engagement, and depth of reflection. If ${statePreviousEssay} exists and is non-empty, read it only to determine whether strengths or weaknesses in originality, creativity, engagement, or depth are recurring. Reflect that insight briefly in the overview and suggestions if relevant. Do NOT output comparison fields.Scoring must follow this exact restricted scale:0 → Off-topic, lacks originality, no creativity, no engagement, no meaningful reflection.25 → Some original or creative ideas are present, but the story is limited in engagement or depth of thinking.
+50 → The story shows clear originality and creativity and is somewhat engaging, with emerging thoughtful elements.
+75 → The story is original, creative, and engaging, demonstrating clear depth and meaningful reflection.
+100 → The story is highly original, imaginative, attention-grabbing, and strongly thought-provoking.
+The score MUST be one of these values only: 0, 25, 50, 75, or 100.`
 }
 const contentgrader = new Agent({
   name: "ContentGrader",
@@ -30,8 +34,16 @@ interface StructuregraderContext {
 }
 const structuregraderInstructions = (runContext: RunContext<StructuregraderContext>, _agent: Agent<StructuregraderContext>) => {
   const { stateCurrentEssay, statePreviousEssay } = runContext.context;
-  return `Evaluate the organization and flow of ${stateCurrentEssay}. If ${statePreviousEssay} exists and is non-empty, read it only to determine whether structural strengths or issues have improved or persisted, and reflect that insight in the overview and suggestions without adding comparison fields. Score only the current essay from 0–100 based on how clearly the opening establishes focus and purpose, how logically ideas progress across paragraphs, how effectively transitions connect ideas, and how strong and purposeful the ending is. Identify which structural elements support readability and which cause confusion or weaken impact. Do not comment on grammar or rewrite the essay.
-`
+  return `Evaluate the organization and development of narrative elements in ${stateCurrentEssay}.
+The five narrative elements are: setting;theme;mood;character;plot.
+If ${statePreviousEssay} exists and is non-empty, read it only to determine whether strengths or weaknesses in the development or clarity of these narrative elements have improved or persisted. Reflect that insight briefly in the overview and suggestions. Do NOT output comparison fields.
+Scoring must follow this exact restricted scale:
+0 → Narrative elements are missing, extremely unclear, or incoherent.
+25 → A few narrative elements are included, but they are unclear or incomplete.
+50 → Most narrative elements (setting, theme, mood, character, plot) are present with basic clarity.
+75 → All key narrative elements are clearly presented and logically connected.
+100 → All narrative elements are skillfully developed, cohesive, and enhance the overall storytelling impact.
+The score MUST be one of these values only: 0, 25, 50, 75, or 100.`
 }
 const structuregrader = new Agent({
   name: "StructureGrader",
@@ -72,7 +84,15 @@ interface MechanicsContext {
 }
 const mechanicsInstructions = (runContext: RunContext<MechanicsContext>, _agent: Agent<MechanicsContext>) => {
   const { stateCurrentEssay, statePreviousEssay } = runContext.context;
-  return `Evaluate the language mechanics and clarity of ${stateCurrentEssay}. If ${statePreviousEssay} exists and is non-empty, read it only to determine whether recurring mechanical patterns have improved or persisted, and reflect that insight in the overview and suggestions without adding comparison fields. Score only the current essay from 0–100 based on grammar and agreement, sentence control (run-ons, fragments, clarity), punctuation and formatting, and word choice and concision. Focus on patterns that affect readability and credibility rather than isolated typos. Do not rewrite the essay.
+  return `Evaluate the language mechanics and clarity of ${stateCurrentEssay}.
+If ${statePreviousEssay} exists and is non-empty, read it only to determine whether recurring mechanical patterns (grammar, sentence control, punctuation, word choice, fluency) have improved or persisted. Reflect that insight briefly in the overview and suggestions. Do NOT output comparison fields.
+Scoring must follow this exact restricted scale:
+0 → Language is frequently unclear or incorrect; errors severely affect meaning and readability.
+25 → Basic English is used with noticeable errors that sometimes affect meaning. Limited descriptive language.
+50 → Generally clear English with some errors; some descriptive or narrative language is used.
+75 → Clear and mostly accurate English with effective descriptive and narrative language. Minor errors do not affect meaning.
+100 → Vivid, fluent, and precise narrative language with accurate grammar, punctuation, and mechanics throughout.
+The score MUST be one of these values only: 0, 25, 50, 75, or 100.
 `
 }
 const mechanics = new Agent({
@@ -240,21 +260,15 @@ export const runWorkflow = async (workflow: WorkflowInput) => {
           {
             role: "user",
             content: [
-              { type: "input_text", text: `Return only one block using the exact delimiters and keys below; no extra text before or after.
-            <<<CONTENT_RESULT_START>>>
-            score: <0-100 integer>
-            overview_good:
-            - <2-4 bullets>
-            overview_improve:
-            - <2-4 bullets>
-            suggestions:
-            1) <max 5 items total>
-            2) ...
-            <<<CONTENT_RESULT_END>>>
-            Formatting rules:
-            score must be a single integer line.
-            Use - for bullets and 1) 2) ... for suggestions.
-            Do not add any other sections or keys.` }
+              { type: "input_text", text: `Focus feedback strictly on:originality;creativity;engagement;depth of reflection.
+Do NOT mention structure, grammar, organization, clarity, branding, or technical writing issues.
+Do NOT rewrite the essay. Keep feedback concise and actionable.
+Return only one block using the exact delimiters and keys below; no extra text before or after.
+<<<CONTENT_RESULT_START>>> score: <0 | 25 | 50 | 75 | 100> overview_good:
+<2-4 bullets> overview_improve:
+<2-4 bullets> suggestions:
+<max 5 items total>
+... <<<CONTENT_RESULT_END>>>` }
             ]
           }
         ],
@@ -282,20 +296,15 @@ export const runWorkflow = async (workflow: WorkflowInput) => {
           {
             role: "user",
             content: [
-              { type: "input_text", text: `Return only the following block using the exact delimiters and keys, with no extra text.
-            <<<STRUCTURE_RESULT_START>>>
-            score: <0-100 integer>
-            overview_good:
-            - <2-4 bullets>
-            overview_improve:
-            - <2-4 bullets>
-            suggestions:
-            1) <max 5 items total>
-            2) ...
-            <<<STRUCTURE_RESULT_END>>>
-            Formatting rules:
-            Use - for bullets and numbered 1) format for suggestions.
-            Do not add any additional sections or labels.` }
+              { type: "input_text", text: `Focus feedback strictly on:clarity of the five narrative elements; completeness of development; logical connection between elements; cohesion and storytelling impact.
+Do NOT comment on grammar, sentence structure, or writing mechanics. Do NOT rewrite the essay. Keep feedback concise and actionable.
+Return only the following block using the exact delimiters and keys, with no extra text.
+<<<STRUCTURE_RESULT_START>>> score: <0 | 25 | 50 | 75 | 100> overview_good:
+<2-4 bullets> overview_improve:
+<2-4 bullets> suggestions:
+<max 5 items total>
+... <<<STRUCTURE_RESULT_END>>>
+Formatting rules: Use - for bullets. Use numbered 1) format for suggestions. Do not add any additional sections or labels.` }
             ]
           }
         ],
@@ -323,20 +332,16 @@ export const runWorkflow = async (workflow: WorkflowInput) => {
           {
             role: "user",
             content: [
-              { type: "input_text", text: `Return only the following block using the exact delimiters and keys, with no extra text.
-            <<<MECHANICS_RESULT_START>>>
-            score: <0-100 integer>
-            overview_good:
-            - <2-4 bullets>
-            overview_improve:
-            - <2-4 bullets>
-            suggestions:
-            1) <max 5 items total>
-            2) ...
-            <<<MECHANICS_RESULT_END>>>
-            Formatting rules:
-            Use - for bullets and numbered 1) format for suggestions.
-            Do not add any additional sections or labels.` }
+              { type: "input_text", text: `Focus feedback strictly on:grammar and agreement; sentence control (run-ons, fragments, clarity);punctuation and formatting; word choice, precision, and concision; fluency and descriptive effectiveness;
+Focus on patterns that affect readability and credibility rather than isolated typos.
+Do NOT comment on structure, narrative elements, originality, or storytelling depth. Do NOT rewrite the essay. Keep feedback concise and actionable.
+Return only the following block using the exact delimiters and keys, with no extra text.
+<<<MECHANICS_RESULT_START>>> score: <0 | 25 | 50 | 75 | 100> overview_good:
+<2-4 bullets> overview_improve:
+<2-4 bullets> suggestions:
+<max 5 items total>
+... <<<MECHANICS_RESULT_END>>>
+Formatting rules: Use - for bullets. Use numbered 1) format for suggestions. Do not add any additional sections or labels.` }
             ]
           }
         ],

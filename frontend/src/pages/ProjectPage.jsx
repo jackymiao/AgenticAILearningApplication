@@ -662,7 +662,10 @@ export default function ProjectPage() {
                         >
                           {review.status === 'success' && review.result_json && (() => {
                             try {
-                              const data = review.result_json;
+                              // Handle result_json - it might be a string or object depending on how it was stored
+                              const data = typeof review.result_json === 'string' 
+                                ? JSON.parse(review.result_json) 
+                                : review.result_json;
                               const score = data.score || 0;
                               const scoreColor = score >= 80 ? '#4CAF50' : score >= 60 ? '#ff9800' : '#f44336';
                               
