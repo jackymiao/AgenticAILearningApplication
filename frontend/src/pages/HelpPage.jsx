@@ -60,15 +60,15 @@ export default function HelpPage() {
           </p>
           <ul style={{ marginLeft: '24px', marginTop: '12px', fontSize: '16px' }}>
             <li style={{ marginBottom: '12px' }}>
-              <strong>Content (Ideas & Evidence):</strong> Quality of your arguments, relevance 
+              <strong>Story Content (Ideas & Evidence):</strong> Quality of your arguments, relevance 
               to the topic, use of evidence, and depth of analysis.
             </li>
             <li style={{ marginBottom: '12px' }}>
-              <strong>Structure (Organization):</strong> Logical flow, paragraph organization, 
+              <strong>Narration Skills (Organization):</strong> Logical flow, paragraph organization, 
               transitions, introduction and conclusion effectiveness.
             </li>
             <li style={{ marginBottom: '12px' }}>
-              <strong>Mechanics (Grammar & Style):</strong> Grammar correctness, spelling, 
+              <strong>Language Use & Mechanics (Grammar & Style):</strong> Grammar correctness, spelling, 
               punctuation, sentence structure, and overall writing clarity.
             </li>
           </ul>

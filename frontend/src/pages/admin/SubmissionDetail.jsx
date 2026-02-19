@@ -105,6 +105,15 @@ export default function SubmissionDetail() {
   }
 
   const categories = ['content', 'structure', 'mechanics'];
+  
+  const getCategoryDisplayName = (cat) => {
+    const names = {
+      content: 'Story Content',
+      structure: 'Narration Skills',
+      mechanics: 'Language Use & Mechanics'
+    };
+    return names[cat];
+  };
 
   return (
     <PageContainer>
@@ -170,15 +179,15 @@ export default function SubmissionDetail() {
                     textTransform: 'capitalize'
                   }}
                 >
-                  {cat}
+                  {getCategoryDisplayName(cat)}
                   {submission.reviewHistory[cat] && ` (${submission.reviewHistory[cat].length})`}
                 </button>
               ))}
             </div>
             
             <div style={{ padding: '24px' }}>
-              <h3 style={{ marginBottom: '16px', textTransform: 'capitalize' }}>
-                {activeTab} Review Attempts
+              <h3 style={{ marginBottom: '16px' }}>
+                {getCategoryDisplayName(activeTab)} Review Attempts
               </h3>
 
               {submission.reviewHistory[activeTab]?.length > 0 ? (

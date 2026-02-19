@@ -76,6 +76,22 @@ export default function ProjectPage() {
       setUserState(data);
       setError('');
       
+      // Restore finalScore from review history if available
+      const allReviews = Object.values(data.reviewHistory).flat();
+      if (allReviews.length > 0) {
+        const mostRecentReview = allReviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        if (mostRecentReview.status === 'success' && mostRecentReview.result_json) {
+          try {
+            const resultData = typeof mostRecentReview.result_json === 'string' 
+              ? JSON.parse(mostRecentReview.result_json)
+              : mostRecentReview.result_json;
+            setFinalScore(resultData.score || 0);
+          } catch (e) {
+            console.error('Error parsing result_json for final score:', e);
+          }
+        }
+      }
+      
       // Initialize player in game system
       await initializePlayerWithName(name);
     } catch (err) {
@@ -400,6 +416,15 @@ export default function ProjectPage() {
   }
 
   const categories = ['content', 'structure', 'mechanics'];
+  
+  const getCategoryDisplayName = (cat) => {
+    const names = {
+      content: 'Story Content',
+      structure: 'Narration Skills',
+      mechanics: 'Language Use & Mechanics'
+    };
+    return names[cat];
+  };
 
   return (
     <PageContainer>
@@ -626,23 +651,25 @@ export default function ProjectPage() {
                   {categories.map(cat => (
                     <button
                       key={cat}
-                      onClick={() => setActiveTab(cat)}
+                      onClick={() => {
+                        console.log('Tab clicked:', cat, 'Reviews available:', userState?.reviewHistory[cat]);
+                        setActiveTab(cat);
+                      }}
                       style={{
                         flex: 1,
                         padding: '16px',
                         backgroundColor: activeTab === cat ? 'white' : '#f5f5f5',
                         borderBottom: activeTab === cat ? '2px solid #007bff' : 'none',
-                        fontWeight: activeTab === cat ? 'bold' : 'normal',
-                        textTransform: 'capitalize'
+                        fontWeight: activeTab === cat ? 'bold' : 'normal'
                       }}
                     >
-                      {cat}
+                      {getCategoryDisplayName(cat)}
                     </button>
                   ))}
                 </div>
                 
                 <div style={{ padding: '24px' }}>
-                  <h3 style={{ textTransform: 'capitalize', marginBottom: '16px' }}>{activeTab} Review</h3>
+                  <h3 style={{ marginBottom: '16px' }}>{getCategoryDisplayName(activeTab)} Review</h3>
 
                   {userState?.reviewHistory[activeTab]?.length > 0 ? (
                     <div>
