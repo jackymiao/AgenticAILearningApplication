@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter, useParams } from 'react-router-dom';
 import ProjectPage from '../ProjectPage';
 import { publicApi, gameApi } from '../../api/endpoints';
@@ -275,6 +275,107 @@ describe('ProjectPage', () => {
       await waitFor(() => {
         const textarea = screen.queryByDisplayValue('This is my saved essay');
         expect(textarea).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Review Tabs Rendering', () => {
+    it('should render review results for each category tab', async () => {
+      localStorage.setItem('project_TEST01_studentName', 'Test User');
+      localStorage.setItem('project_TEST01_studentId', 'TU1234');
+
+      publicApi.getProject.mockResolvedValue({
+        code: 'TEST01',
+        title: 'Test Project',
+        word_limit: 150,
+      });
+
+      publicApi.getUserState.mockResolvedValue({
+        alreadySubmitted: false,
+        attemptsRemaining: 2,
+        reviewHistory: {
+          content: [
+            {
+              id: 1,
+              category: 'content',
+              status: 'success',
+              attempt_number: 1,
+              created_at: '2024-01-01T12:00:00.000Z',
+              result_json: {
+                score: 85,
+                overview: {
+                  good: ['Strong thesis statement'],
+                  improve: ['Add more examples'],
+                },
+                suggestions: ['Expand your second paragraph'],
+              },
+            },
+          ],
+          structure: [
+            {
+              id: 2,
+              category: 'structure',
+              status: 'success',
+              attempt_number: 1,
+              created_at: '2024-01-01T12:05:00.000Z',
+              result_json: {
+                score: 78,
+                overview: {
+                  good: ['Clear introduction'],
+                  improve: ['Smoother transitions'],
+                },
+                suggestions: ['Add a transition sentence between paragraphs'],
+              },
+            },
+          ],
+          mechanics: [
+            {
+              id: 3,
+              category: 'mechanics',
+              status: 'success',
+              attempt_number: 1,
+              created_at: '2024-01-01T12:10:00.000Z',
+              result_json: {
+                score: 92,
+                overview: {
+                  good: ['Strong grammar'],
+                  improve: ['Vary sentence length'],
+                },
+                suggestions: ['Mix short and long sentences for rhythm'],
+              },
+            },
+          ],
+        },
+      });
+
+      gameApi.initPlayer.mockResolvedValue({
+        reviewTokens: 2,
+        attackTokens: 0,
+        shieldTokens: 0,
+        cooldownRemaining: 0,
+      });
+
+      renderProjectPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Story Content')).toBeInTheDocument();
+        expect(screen.getByText('Narration Skills')).toBeInTheDocument();
+        expect(screen.getByText('Language Use & Mechanics')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('✓ Strengths:')).toBeInTheDocument();
+        expect(screen.getByText('Strong thesis statement')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Narration Skills'));
+      await waitFor(() => {
+        expect(screen.getByText('Clear introduction')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Language Use & Mechanics'));
+      await waitFor(() => {
+        expect(screen.getByText('Strong grammar')).toBeInTheDocument();
       });
     });
   });
