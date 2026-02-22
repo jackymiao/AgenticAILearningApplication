@@ -110,9 +110,6 @@ router.get('/projects/:code', async (req: Request, res: Response): Promise<void>
 // Create project
 router.post('/projects', async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('[CREATE PROJECT] Request body:', req.body);
-    console.log('[CREATE PROJECT] Session adminId:', req.session.adminId);
-    
     const {
       code,
       title,
@@ -141,18 +138,6 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
     
     const codeNorm = normalizeProjectCode(code);
     
-    console.log('[CREATE PROJECT] Inserting with params:', {
-      codeNorm,
-      title,
-      description,
-      youtubeUrl: youtubeUrl || null,
-      wordLimit: Number(wordLimit) || 150,
-      attemptLimitPerCategory: Number(attemptLimitPerCategory) || 3,
-      reviewCooldownSeconds: Number(reviewCooldownSeconds) || 120,
-      adminId: req.session.adminId,
-      enabled: enabled !== false && enabled !== 'false'
-    });
-    
     const result = await pool.query<Project>(
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
@@ -174,7 +159,9 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       ]
     );
     
-    console.log('[CREATE PROJECT] Success:', result.rows[0]);
+    if (process.env.DEBUG === '1') {
+      console.log('[CREATE PROJECT] Success:', result.rows[0]);
+    }
     res.status(201).json(result.rows[0]);
   } catch (error: any) {
     console.error('[CREATE PROJECT] Error:', error);

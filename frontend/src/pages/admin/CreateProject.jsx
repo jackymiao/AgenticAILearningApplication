@@ -32,11 +32,8 @@ export default function CreateProject() {
     setImportError('');
     setLoading(true);
 
-    console.log('[CREATE PROJECT FORM] Submitting with data:', formData);
-
     try {
       const result = await adminApi.createProject(formData);
-      console.log('[CREATE PROJECT FORM] Success:', result);
 
       if (studentFile) {
         try {

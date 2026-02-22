@@ -65,6 +65,7 @@ export interface ReviewAttempt {
   essay_snapshot: string;
   status: ReviewStatus;
   score: number | null;
+  final_score?: number | null;
   result_json: any;
   error_message: string | null;
   created_at: Date;
@@ -75,6 +76,7 @@ export interface UserState {
   alreadySubmitted: boolean;
   attemptsRemaining: number;
   reviewHistory: Record<ReviewCategory, ReviewAttempt[]>;
+  cooldownRemaining?: number;
 }
 
 export interface AgentCallParams {

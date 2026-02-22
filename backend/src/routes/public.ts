@@ -114,9 +114,9 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
     
     const alreadySubmitted = submissionResult.rows.length > 0;
     
-    // Get project limits
-    const projectResult = await pool.query<Pick<Project, 'attempt_limit_per_category'>>(
-      `SELECT attempt_limit_per_category FROM projects WHERE code = $1`,
+    // Get project limits and cooldown settings
+    const projectResult = await pool.query<Pick<Project, 'attempt_limit_per_category' | 'review_cooldown_seconds'>>(
+      `SELECT attempt_limit_per_category, review_cooldown_seconds FROM projects WHERE code = $1`,
       [code]
     );
     
@@ -133,15 +133,26 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (project_code, user_name_norm) 
        DO UPDATE SET updated_at = NOW(), user_name = EXCLUDED.user_name
-       RETURNING review_tokens`,
+       RETURNING review_tokens, last_review_at`,
       [code, userName, userNameNorm, limit]
     );
     
     const attemptsRemaining = playerStateResult.rows[0].review_tokens;
+    const lastReviewAt = playerStateResult.rows[0].last_review_at;
+    
+    // Calculate cooldown remaining (if any)
+    let cooldownRemaining = 0;
+    if (lastReviewAt) {
+      const cooldownSeconds = projectResult.rows[0].review_cooldown_seconds || 120;
+      const cooldownMs = cooldownSeconds * 1000;
+      const lastReviewTime = new Date(lastReviewAt).getTime();
+      const elapsed = Date.now() - lastReviewTime;
+      cooldownRemaining = Math.max(0, cooldownMs - elapsed);
+    }
     
     // Get review history grouped by category (most recent first)
     const historyResult = await pool.query<ReviewAttempt>(
-      `SELECT id, category, attempt_number, status, score, result_json, error_message, created_at
+      `SELECT id, category, attempt_number, status, score, final_score, result_json, error_message, created_at
        FROM review_attempts
        WHERE project_code = $1 AND user_name_norm = $2
        ORDER BY attempt_number DESC, category`,
@@ -163,7 +174,8 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
     const userState: UserState = {
       alreadySubmitted,
       attemptsRemaining,
-      reviewHistory
+      reviewHistory,
+      cooldownRemaining
     };
     
     res.json(userState);
@@ -301,7 +313,6 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     const isE2ETest = process.env.E2E_TEST === '1';
     
     if (isE2ETest) {
-      console.log('[REVIEW] E2E_TEST mode - using mock AI result');
       // Mock AI result for E2E testing
       sdkResult = {
         final_score: 88,
@@ -328,9 +339,11 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       };
     } else {
       try {
-        console.log('[REVIEW] Calling SDK with input length:', sdkInput.length);
         sdkResult = await runWorkflow({ input_as_text: sdkInput });
-        console.log('[REVIEW] SDK Result:', JSON.stringify(sdkResult, null, 2));
+        if (process.env.DEBUG === '1') {
+          console.log('[REVIEW] final_score:', sdkResult?.final_score);
+          console.log('[REVIEW] Full SDK Result:', JSON.stringify(sdkResult, null, 2));
+        }
       } catch (error) {
         console.error('[REVIEW] Error calling SDK:', error);
         res.status(500).json({ 
@@ -372,12 +385,58 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     // Extract results for each category
     const categories: ReviewCategory[] = ['content', 'structure', 'mechanics'];
     const savedAttempts: ReviewAttempt[] = [];
+    const categoryScores: Record<string, number> = {};
     
-    console.log('[REVIEW] sdkResult.details type:', typeof sdkResult.details);
-    console.log('[REVIEW] sdkResult.details keys:', Object.keys(sdkResult.details || {}));
+    if (process.env.DEBUG === '1') {
+      console.log('[REVIEW] sdkResult.details keys:', Object.keys(sdkResult.details || {}));
+    }
     
+    // First pass: extract all category scores
     for (const category of categories) {
-      const categoryData = sdkResult.details[category];
+      let categoryData = sdkResult.details[category];
+
+      // If category data is a JSON string, parse it
+      if (typeof categoryData === 'string') {
+        try {
+          categoryData = JSON.parse(categoryData);
+        } catch (parseError) {
+          console.error(`[REVIEW] Failed to parse ${category} details JSON:`, parseError);
+          categoryData = null;
+        }
+      }
+      
+      if (!categoryData) {
+        console.error(`[REVIEW] Missing category data for: ${category}`);
+        console.error(`[REVIEW] Available keys:`, Object.keys(sdkResult.details));
+        continue;
+      }
+
+      categoryScores[category] = categoryData.score || 0;
+    }
+
+    // Calculate final score as average of three categories
+    const scores = Object.values(categoryScores);
+    const calculatedFinalScore = scores.length === 3 
+      ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
+      : sdkResult.final_score || 0;
+    
+    if (process.env.DEBUG === '1') {
+      console.log('[REVIEW] Calculated final score:', { scores: categoryScores, final: calculatedFinalScore });
+    }
+    
+    // Second pass: save each category with the calculated final score
+    for (const category of categories) {
+      let categoryData = sdkResult.details[category];
+
+      // If category data is a JSON string, parse it
+      if (typeof categoryData === 'string') {
+        try {
+          categoryData = JSON.parse(categoryData);
+        } catch (parseError) {
+          console.error(`[REVIEW] Failed to parse ${category} details JSON:`, parseError);
+          categoryData = null;
+        }
+      }
       
       if (!categoryData) {
         console.error(`[REVIEW] Missing category data for: ${category}`);
@@ -385,7 +444,9 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
         continue;
       }
       
-      console.log(`[REVIEW] Processing ${category}:`, JSON.stringify(categoryData, null, 2));
+      if (process.env.DEBUG === '1') {
+        console.log(`[REVIEW] Processing ${category}:`, JSON.stringify(categoryData, null, 2));
+      }
       
       // Parse the category feedback - SDK returns overview_good, overview_improve, suggestions
       const result_json = {
@@ -397,7 +458,7 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
         suggestions: categoryData.suggestions || []
       };
       
-      // Save each category as a separate review attempt
+      // Save each category as a separate review attempt with calculated final score
       const insertResult = await pool.query<ReviewAttempt>(
         `INSERT INTO review_attempts 
          (project_code, user_name, user_name_norm, category, attempt_number, 
@@ -414,7 +475,7 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
           'success',
           categoryData.score || 0,
           JSON.stringify(result_json),
-          sdkResult.final_score // Store the final score from SDK
+          calculatedFinalScore
         ]
       );
       
@@ -444,10 +505,10 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     
     res.json({
       reviews: savedAttempts,
-      finalScore: sdkResult.final_score || 0,
+      finalScore: calculatedFinalScore,
       attemptsRemaining: updatedTokens.review_tokens,
       tokens: updatedTokens,
-      cooldownMs: 2 * 60 * 1000 // 2 minutes
+      cooldownMs: (project.review_cooldown_seconds || 120) * 1000
     });
     
   } catch (error) {

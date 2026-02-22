@@ -24,7 +24,6 @@ export default function SubmissionDetail() {
   const loadSubmission = async () => {
     try {
       const data = await adminApi.getSubmission(submissionId);
-      console.log('Loaded submission data:', data);
       setSubmission(data);
       setAdminScore(data.admin_score || '');
       setAdminFeedback(data.admin_feedback || '');

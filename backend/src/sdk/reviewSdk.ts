@@ -59,7 +59,7 @@ const structuregrader = new Agent({
 
 const parser = new Agent({
   name: "Parser",
-  instructions: `Goal: Convert {{ into JSON with previous_essay and current_essay.
+  instructions: `Goal: Convert input text into JSON with previous_essay and current_essay.
 What to do:
 Extract text between <<<CURRENT_START>>> and <<<CURRENT_END>>> as current_essay. Preserve paragraph breaks. Trim leading/trailing whitespace.
 Extract text between <<<PREVIOUS_START>>> and <<<PREVIOUS_END>>> only if both delimiters exist and the extracted text contains at least 1 non-whitespace character. Otherwise set previous_essay = null.
@@ -140,7 +140,7 @@ interface FinalscoreContext {
 }
 const finalscoreInstructions = (runContext: RunContext<FinalscoreContext>, _agent: Agent<FinalscoreContext>) => {
   const { stateContentGraderOutput, stateStructureGraderOutput, stateMechanicsGraderOutput } = runContext.context;
-  return `Read the already-generated grader outputs from ${stateContentGraderOutput}, ${stateStructureGraderOutput}, and ${stateMechanicsGraderOutput}. Extract only the integer score from each block. Do not parse overviews or suggestions, and do not generate any new feedback. Calculate the final score using fixed internal weights: content = 0.45, structure = 0.30, mechanics = 0.25, using final_score = round(content_score*0.45 + structure_score*0.30 + mechanics_score*0.25). Output the result in a delimiter format consistent with other grader nodes.`
+  return `Read the already-generated grader outputs from ${stateContentGraderOutput}, ${stateStructureGraderOutput}, and ${stateMechanicsGraderOutput}. Extract only the score from each block. Do not parse overviews or suggestions, and do not generate any new feedback. Calculate the final score using fixed internal weights: content = 0.33, structure = 0.33, mechanics = 0.33, using final_score = round(content_score*0.33 + structure_score*0.33 + mechanics_score*0.33). Output the result in a delimiter format consistent with other grader nodes.`
 }
 const finalscore = new Agent({
   name: "FinalScore",

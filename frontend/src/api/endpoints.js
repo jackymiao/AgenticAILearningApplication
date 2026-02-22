@@ -24,12 +24,6 @@ export const publicApi = {
   getUserState: (code, userName) => apiFetch(`/public/projects/${code}/user-state?userName=${encodeURIComponent(userName)}`),
   submitReview: (code, userName, essay) => {
     const requestBody = { userName, essay };
-    console.log('[API CLIENT] POST /public/projects/' + code + '/reviews');
-    console.log('[API CLIENT] Request body:', {
-      userName,
-      essayLength: essay?.length || 0,
-      essayPreview: essay?.substring(0, 100)
-    });
     return apiFetch(`/public/projects/${code}/reviews`, {
       method: 'POST',
       body: JSON.stringify(requestBody)

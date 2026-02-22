@@ -40,9 +40,9 @@ router.post('/projects/:code/player/init', async (req: Request, res: Response): 
     
     const userNameNorm = normalizeUserName(userName);
     
-    // Get project's attempt limit
+    // Get project's attempt limit and review cooldown setting
     const projectResult = await pool.query(
-      `SELECT attempt_limit_per_category FROM projects WHERE code = $1`,
+      `SELECT attempt_limit_per_category, review_cooldown_seconds FROM projects WHERE code = $1`,
       [code]
     );
     
@@ -52,26 +52,27 @@ router.post('/projects/:code/player/init', async (req: Request, res: Response): 
     }
     
     const limit = projectResult.rows[0].attempt_limit_per_category;
+    const reviewCooldownSeconds = projectResult.rows[0].review_cooldown_seconds || 120;
     
     // Insert or get existing player state
     const result = await pool.query(
       `INSERT INTO player_state (project_code, user_name, user_name_norm, review_tokens)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (project_code, user_name_norm)
-       DO UPDATE SET updated_at = NOW(), user_name = EXCLUDED.user_name
+       DO UPDATE SET updated_at = NOW(), user_name = EXCLUDED.user_name, review_tokens = player_state.review_tokens
        RETURNING review_tokens, attack_tokens, shield_tokens, last_review_at`,
       [code, userName, userNameNorm, limit]
     );
     
     const playerState = result.rows[0];
     
-    // Calculate cooldown remaining
+    // Calculate cooldown remaining using project-specific cooldown setting
     let cooldownRemaining = 0;
     if (playerState.last_review_at) {
       const lastReviewTime = new Date(playerState.last_review_at).getTime();
       const now = Date.now();
       const elapsed = now - lastReviewTime;
-      const cooldownMs = 2 * 60 * 1000; // 2 minutes
+      const cooldownMs = reviewCooldownSeconds * 1000;
       
       if (elapsed < cooldownMs) {
         cooldownRemaining = cooldownMs - elapsed;
@@ -267,7 +268,9 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
       
       if (!notificationSent) {
         // Target not connected, auto-succeed after 15 seconds
-        console.log('[ATTACK] Target not connected, will auto-resolve');
+        if (process.env.DEBUG === '1') {
+          console.log('[ATTACK] Target not connected, will auto-resolve');
+        }
       }
       
       // Start timer to auto-resolve attack after 15 seconds
@@ -484,7 +487,9 @@ async function autoResolveAttack(attackId: string, projectCode: string, attacker
     
     await client.query('COMMIT');
     
-    console.log('[ATTACK] Auto-resolved (no response):', attackId);
+    if (process.env.DEBUG === '1') {
+      console.log('[ATTACK] Auto-resolved (no response):', attackId);
+    }
     
     // Notify attacker
     ws.sendAttackResult(projectCode, attackerName, {

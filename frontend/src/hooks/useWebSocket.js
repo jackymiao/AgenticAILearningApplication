@@ -13,7 +13,9 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const API_BASE = import.meta.env.VITE_API_BASE || '/api';
       
-      console.log('[WS] API_BASE:', API_BASE);
+      if (import.meta.env.DEBUG === '1') {
+        console.log('[WS] API_BASE:', API_BASE);
+      }
       
       // Determine WebSocket URL based on API_BASE
       let wsUrl;
@@ -26,11 +28,15 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
         wsUrl = `${protocol}//${window.location.hostname}:3000/ws`;
       }
       
-      console.log('[WS] Connecting to:', wsUrl);
+      if (import.meta.env.DEBUG === '1') {
+        console.log('[WS] Connecting to:', wsUrl);
+      }
       ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
-        console.log('[WS] Connected');
+        if (import.meta.env.DEBUG === '1') {
+          console.log('[WS] Connected');
+        }
         setConnected(true);
         
         // Register with project and userName
@@ -51,29 +57,39 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('[WS] Message received:', message);
+          if (import.meta.env.DEBUG === '1') {
+            console.log('[WS] Message received:', message);
+          }
 
           switch (message.type) {
             case 'registered':
-              console.log('[WS] Registration confirmed');
+              if (import.meta.env.DEBUG === '1') {
+                console.log('[WS] Registration confirmed');
+              }
               break;
               
             case 'incoming_attack':
-              console.log('[WS] Incoming attack!', message.attackId);
+              if (import.meta.env.DEBUG === '1') {
+                console.log('[WS] Incoming attack!', message.attackId);
+              }
               if (onAttackReceived) {
                 onAttackReceived(message.attackId);
               }
               break;
               
             case 'attack_result':
-              console.log('[WS] Attack result:', message);
+              if (import.meta.env.DEBUG === '1') {
+                console.log('[WS] Attack result:', message);
+              }
               if (onAttackResult) {
                 onAttackResult(message);
               }
               break;
               
             case 'token_update':
-              console.log('[WS] Token update:', message.tokens);
+              if (import.meta.env.DEBUG === '1') {
+                console.log('[WS] Token update:', message.tokens);
+              }
               if (onTokenUpdate) {
                 onTokenUpdate(message.tokens);
               }
@@ -84,7 +100,9 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
               break;
               
             default:
-              console.log('[WS] Unknown message type:', message.type);
+              if (import.meta.env.DEBUG === '1') {
+                console.log('[WS] Unknown message type:', message.type);
+              }
           }
         } catch (error) {
           console.error('[WS] Error parsing message:', error);
@@ -92,7 +110,9 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
       };
 
       ws.current.onclose = () => {
-        console.log('[WS] Disconnected');
+        if (import.meta.env.DEBUG === '1') {
+          console.log('[WS] Disconnected');
+        }
         setConnected(false);
         
         // Clear heartbeat
@@ -103,7 +123,9 @@ export function useWebSocket(projectCode, userName, onAttackReceived, onTokenUpd
         
         // Attempt reconnect after 3 seconds
         reconnectTimeout.current = setTimeout(() => {
-          console.log('[WS] Reconnecting...');
+          if (import.meta.env.DEBUG === '1') {
+            console.log('[WS] Reconnecting...');
+          }
           connect();
         }, 3000);
       };

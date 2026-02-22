@@ -61,9 +61,8 @@ describe('ProjectPage', () => {
     submissionCount: 0,
     reviewHistory: {
       content: [],
-      grammar: [],
       structure: [],
-      overall: [],
+      mechanics: [],
     },
   });
 
@@ -378,6 +377,59 @@ describe('ProjectPage', () => {
         expect(screen.getByText('Strong grammar')).toBeInTheDocument();
       });
     });
+
+    it('should show no reviews when reviewHistory keys do not match expected categories', async () => {
+      localStorage.setItem('project_TEST01_studentName', 'Test User');
+      localStorage.setItem('project_TEST01_studentId', 'TU1234');
+
+      publicApi.getProject.mockResolvedValue({
+        code: 'TEST01',
+        title: 'Test Project',
+        word_limit: 150,
+      });
+
+      publicApi.getUserState.mockResolvedValue({
+        alreadySubmitted: false,
+        attemptsRemaining: 2,
+        reviewHistory: {
+          grammar: [
+            {
+              id: 10,
+              category: 'grammar',
+              status: 'success',
+              attempt_number: 1,
+              created_at: '2024-01-01T12:00:00.000Z',
+              result_json: {
+                score: 90,
+                overview: {
+                  good: ['Great punctuation'],
+                  improve: [],
+                },
+                suggestions: [],
+              },
+            },
+          ],
+          overall: [],
+        },
+      });
+
+      gameApi.initPlayer.mockResolvedValue({
+        reviewTokens: 2,
+        attackTokens: 0,
+        shieldTokens: 0,
+        cooldownRemaining: 0,
+      });
+
+      renderProjectPage();
+
+      await waitFor(() => {
+        expect(screen.getByText('Story Content')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('No reviews yet. Click "Submit for Review" to get feedback.')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Token Display', () => {
@@ -477,6 +529,222 @@ describe('ProjectPage', () => {
       
       await waitFor(() => {
         expect(gameApi.initPlayer).toHaveBeenCalled();
+      });
+    });
+
+    describe('Admin-set cooldown periods', () => {
+      beforeEach(() => {
+        localStorage.setItem('project_TEST01_studentName', 'Test User');
+        localStorage.setItem('project_TEST01_studentId', 'TU1234');
+        
+        publicApi.getProject.mockResolvedValue({
+          code: 'TEST01',
+          title: 'Test Project',
+          word_limit: 150,
+        });
+        
+        publicApi.getUserState.mockResolvedValue(defaultUserState());
+      });
+
+      it('should display 30s cooldown correctly when admin sets it to 30 seconds', async () => {
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 30000, // 30 seconds
+        });
+        
+        renderProjectPage();
+        
+        await waitFor(() => {
+          const submitButton = screen.getByText(/Wait 0:30/i);
+          expect(submitButton).toBeInTheDocument();
+          expect(submitButton.closest('button')).toBeDisabled();
+        });
+      });
+
+      it('should display 60s cooldown correctly when admin sets it to 60 seconds', async () => {
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 60000, // 60 seconds
+        });
+        
+        renderProjectPage();
+        
+        await waitFor(() => {
+          const submitButton = screen.getByText(/Wait 1:00/i);
+          expect(submitButton).toBeInTheDocument();
+          expect(submitButton.closest('button')).toBeDisabled();
+        });
+      });
+
+      it('should display 90s cooldown correctly when admin sets it to 90 seconds', async () => {
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 90000, // 90 seconds
+        });
+        
+        renderProjectPage();
+        
+        await waitFor(() => {
+          const submitButton = screen.getByText(/Wait 1:30/i);
+          expect(submitButton).toBeInTheDocument();
+          expect(submitButton.closest('button')).toBeDisabled();
+        });
+      });
+
+      it('should display 120s cooldown correctly when admin sets it to 120 seconds', async () => {
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 120000, // 120 seconds (2 minutes)
+        });
+        
+        renderProjectPage();
+        
+        await waitFor(() => {
+          const submitButton = screen.getByText(/Wait 2:00/i);
+          expect(submitButton).toBeInTheDocument();
+          expect(submitButton.closest('button')).toBeDisabled();
+        });
+      });
+
+      it('should countdown over time from 30s and enable button when it reaches zero', async () => {
+        jest.useFakeTimers();
+        
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 5000, // 5 seconds for faster test
+        });
+        
+        renderProjectPage();
+        
+        // Wait for component to load and add essay text
+        await waitFor(() => {
+          expect(screen.getByPlaceholderText(/Write your essay here/i)).toBeInTheDocument();
+        });
+        
+        // Type essay text to enable the button
+        const essayTextarea = screen.getByPlaceholderText(/Write your essay here/i);
+        fireEvent.change(essayTextarea, { target: { value: 'This is my test essay content.' } });
+        
+        // Initial state - button should be disabled with cooldown message
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Wait 0:05/i);
+          expect(submitButton).toBeDisabled();
+        });
+        
+        // Advance time by 2 seconds
+        jest.advanceTimersByTime(2000);
+        
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Wait 0:03/i);
+          expect(submitButton).toBeDisabled();
+        });
+        
+        // Advance time to complete cooldown
+        jest.advanceTimersByTime(3000);
+        
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Submit for Review/i);
+          expect(submitButton).not.toBeDisabled();
+        });
+        
+        jest.useRealTimers();
+      });
+
+      it('should countdown over time from 60s and enable button when it reaches zero', async () => {
+        jest.useFakeTimers();
+        
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 10000, // 10 seconds for faster test
+        });
+        
+        renderProjectPage();
+        
+        // Wait for component to load and add essay text
+        await waitFor(() => {
+          expect(screen.getByPlaceholderText(/Write your essay here/i)).toBeInTheDocument();
+        });
+        
+        // Type essay text to enable the button
+        const essayTextarea = screen.getByPlaceholderText(/Write your essay here/i);
+        fireEvent.change(essayTextarea, { target: { value: 'This is my test essay content for 60 second cooldown.' } });
+        
+        // Initial state - button should show Wait 0:10
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Wait 0:10/i);
+          expect(submitButton).toBeDisabled();
+        });
+        
+        // Advance time by 5 seconds
+        jest.advanceTimersByTime(5000);
+        
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Wait 0:05/i);
+          expect(submitButton).toBeDisabled();
+        });
+        
+        // Advance time by another 4 seconds (total 9s)
+        jest.advanceTimersByTime(4000);
+        
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Wait 0:01/i);
+          expect(submitButton).toBeDisabled();
+        });
+        
+        // Complete the cooldown
+        jest.advanceTimersByTime(1000);
+        
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Submit for Review/i);
+          expect(submitButton).not.toBeDisabled();
+        });
+        
+        jest.useRealTimers();
+      });
+
+      it('should show "Submit for Review" when cooldown is 0', async () => {
+        gameApi.initPlayer.mockResolvedValue({
+          reviewTokens: 3,
+          attackTokens: 0,
+          shieldTokens: 0,
+          cooldownRemaining: 0,
+        });
+        
+        renderProjectPage();
+        
+        // Wait for component to load and add essay text
+        await waitFor(() => {
+          expect(screen.getByPlaceholderText(/Write your essay here/i)).toBeInTheDocument();
+        });
+        
+        // Type essay text to enable the button
+        const essayTextarea = screen.getByPlaceholderText(/Write your essay here/i);
+        fireEvent.change(essayTextarea, { target: { value: 'This is my test essay with no cooldown.' } });
+        
+        await waitFor(() => {
+          const submitButton = screen.getByTestId('submit-review-btn');
+          expect(submitButton).toHaveTextContent(/Submit for Review/i);
+          expect(submitButton).not.toBeDisabled();
+        });
       });
     });
   });

@@ -81,14 +81,18 @@ export default function ProjectPage() {
       const allReviews = Object.values(data.reviewHistory).flat();
       if (allReviews.length > 0) {
         const mostRecentReview = allReviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        if (mostRecentReview.status === 'success' && mostRecentReview.result_json) {
-          try {
-            const resultData = typeof mostRecentReview.result_json === 'string' 
-              ? JSON.parse(mostRecentReview.result_json)
-              : mostRecentReview.result_json;
-            setFinalScore(resultData.score || 0);
-          } catch (e) {
-            console.error('Error parsing result_json for final score:', e);
+        if (mostRecentReview.status === 'success') {
+          if (mostRecentReview.final_score !== undefined && mostRecentReview.final_score !== null) {
+            setFinalScore(Math.round(mostRecentReview.final_score));
+          } else if (mostRecentReview.result_json) {
+            try {
+              const resultData = typeof mostRecentReview.result_json === 'string' 
+                ? JSON.parse(mostRecentReview.result_json)
+                : mostRecentReview.result_json;
+              setFinalScore(Math.round(resultData.score || 0));
+            } catch (e) {
+              console.error('Error parsing result_json for final score:', e);
+            }
           }
         }
       }
@@ -160,12 +164,10 @@ export default function ProjectPage() {
     userNameSubmitted ? userName : null,
     (attackId) => {
       // Handle incoming attack
-      console.log('Incoming attack:', attackId);
       setIncomingAttackId(attackId);
     },
     async (updatedTokens) => {
       // Handle token update
-      console.log('Tokens updated:', updatedTokens);
       setTokens({
         reviewTokens: updatedTokens.review_tokens,
         attackTokens: updatedTokens.attack_tokens,
@@ -182,7 +184,6 @@ export default function ProjectPage() {
     },
     (result) => {
       // Handle attack result
-      console.log('Attack result:', result);
       setAttackWaitingResult(false);
       if (result.success) {
         alert('✅ ' + result.message);
@@ -241,16 +242,8 @@ export default function ProjectPage() {
     setError('');
     setReviewLoading(true);
     
-    console.log('[FRONTEND] Submitting review with:');
-    console.log('  Project Code:', code);
-    console.log('  User Name:', userName);
-    console.log('  Essay length:', essay.length, 'characters');
-    console.log('  Essay word count:', essay.split(/\s+/).length, 'words');
-    console.log('  Essay preview:', essay.substring(0, 100) + '...');
-    
     try {
       const result = await publicApi.submitReview(code, userName, essay);
-      console.log('[FRONTEND] API Response:', result);
       
       // Clear any previous errors on success
       setError('');
@@ -270,9 +263,28 @@ export default function ProjectPage() {
         setCooldownEnds(endsAt);
       }
       
-      // Result contains { reviews: [], finalScore: number, attemptsRemaining: number }
-      if (result.finalScore !== undefined) {
-        setFinalScore(result.finalScore);
+      // Calculate final score from the three category scores
+      if (Array.isArray(result.reviews) && result.reviews.length > 0) {
+        const categoryScores = { content: null, structure: null, mechanics: null };
+        result.reviews.forEach((review) => {
+          if (!review || !review.category) return;
+          let score = review.score;
+          if (score === undefined || score === null) {
+            const data = typeof review.result_json === 'string'
+              ? JSON.parse(review.result_json)
+              : review.result_json;
+            score = data?.score;
+          }
+          if (score !== undefined && score !== null && categoryScores.hasOwnProperty(review.category)) {
+            categoryScores[review.category] = Number(score);
+          }
+        });
+
+        const scores = Object.values(categoryScores).filter((s) => typeof s === 'number');
+        if (scores.length === 3) {
+          const calculatedScore = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+          setFinalScore(calculatedScore);
+        }
       }
       
       // Reload user state to get updated attempts and history
@@ -320,23 +332,15 @@ export default function ProjectPage() {
       alert('Essay submitted successfully!');
       
       // Check if feedback is enabled and user hasn't submitted yet
-      console.log('[FEEDBACK DEBUG] project.enable_feedback:', project?.enable_feedback);
       if (project?.enable_feedback) {
         try {
-          console.log('[FEEDBACK DEBUG] Checking feedback status...');
           const feedbackCheck = await publicApi.checkFeedback(code, userName);
-          console.log('[FEEDBACK DEBUG] feedbackCheck:', feedbackCheck);
           if (!feedbackCheck.hasSubmitted) {
-            console.log('[FEEDBACK DEBUG] Showing feedback modal');
             setShowFeedbackModal(true);
-          } else {
-            console.log('[FEEDBACK DEBUG] User already submitted feedback');
           }
         } catch (err) {
-          console.error('[FEEDBACK DEBUG] Failed to check feedback status:', err);
+          console.error('[FEEDBACK] Failed to check feedback status:', err);
         }
-      } else {
-        console.log('[FEEDBACK DEBUG] Feedback not enabled for this project');
       }
     } catch (err) {
       setError(err.message);
@@ -354,7 +358,6 @@ export default function ProjectPage() {
   };
   
   const handleAttackInitiated = async (result) => {
-    console.log('Attack initiated:', result);
     setAttackWaitingResult(true);
     
     // Update tokens immediately if provided
@@ -378,7 +381,6 @@ export default function ProjectPage() {
   };
   
   const handleDefenseResponse = useCallback(async (result) => {
-    console.log('Defense response:', result);
     if (result.tokens) {
       setTokens({
         reviewTokens: result.tokens.review_tokens,
@@ -683,7 +685,6 @@ export default function ProjectPage() {
                     <button
                       key={cat}
                       onClick={() => {
-                        console.log('Tab clicked:', cat, 'Reviews available:', userState?.reviewHistory[cat]);
                         setActiveTab(cat);
                       }}
                       style={{
@@ -844,9 +845,6 @@ export default function ProjectPage() {
           essay={essay}
           onClose={(submitted) => {
             setShowFeedbackModal(false);
-            if (submitted) {
-              console.log('Feedback submitted successfully');
-            }
           }}
         />
       )}
