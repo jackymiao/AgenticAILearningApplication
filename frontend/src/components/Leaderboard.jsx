@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { publicApi } from '../api/endpoints';
 
 // Update interval in milliseconds (configurable)
 const LEADERBOARD_UPDATE_INTERVAL = 10000; // 10 seconds
 
-export default function Leaderboard({ projectCode, refreshTrigger }) {
+export default function Leaderboard({ projectCode, refreshTrigger, currentUserName }) {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const normalizedCurrentUserName = useMemo(
+    () => (currentUserName ? currentUserName : ''),
+    [currentUserName]
+  );
 
   const fetchLeaderboard = async () => {
     try {
@@ -57,14 +61,26 @@ export default function Leaderboard({ projectCode, refreshTrigger }) {
       {leaderboard.length === 0 ? (
         <p className="empty-message">🌟 No rankings yet... Be the first legend!</p>
       ) : (
-        <div className="leaderboard-list">
-          {leaderboard.map((entry) => (
-            <div key={entry.rank} className="leaderboard-entry">
+        <div className="leaderboard-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          {leaderboard.map((entry) => {
+            const isCurrentUser = normalizedCurrentUserName && entry.userName === normalizedCurrentUserName;
+            return (
+              <div
+                key={entry.rank}
+                className="leaderboard-entry"
+                style={isCurrentUser ? {
+                  backgroundColor: '#E9F7EF',
+                  borderRadius: '6px',
+                  outline: '2px solid #2E7D32',
+                  outlineOffset: '-1px'
+                } : undefined}
+              >
               <span className="rank">#{entry.rank}</span>
               <span className="name" data-testid={`leaderboard-top-${entry.rank}-name`}>{entry.userName}</span>
               <span className="score" data-testid={`leaderboard-top-${entry.rank}-score`}>{entry.score}</span>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

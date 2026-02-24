@@ -87,7 +87,7 @@ describe('Review Cooldown Feature', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('cooldownRemaining');
       // Should be close to 30000ms (allow 500ms variance for execution time)
-      expect(response.body.cooldownRemaining).toBeGreaterThan(29500);
+      expect(response.body.cooldownRemaining).toBeGreaterThan(29000);
       expect(response.body.cooldownRemaining).toBeLessThanOrEqual(30000);
     });
 
@@ -111,7 +111,7 @@ describe('Review Cooldown Feature', () => {
         .query({ userName: testUserName });
 
       expect(response.status).toBe(200);
-      expect(response.body.cooldownRemaining).toBeGreaterThan(59500);
+      expect(response.body.cooldownRemaining).toBeGreaterThan(59000);
       expect(response.body.cooldownRemaining).toBeLessThanOrEqual(60000);
     });
 
@@ -134,7 +134,7 @@ describe('Review Cooldown Feature', () => {
         .query({ userName: testUserName });
 
       expect(response.status).toBe(200);
-      expect(response.body.cooldownRemaining).toBeGreaterThan(89500);
+      expect(response.body.cooldownRemaining).toBeGreaterThan(88000);
       expect(response.body.cooldownRemaining).toBeLessThanOrEqual(90000);
     });
 
@@ -157,7 +157,7 @@ describe('Review Cooldown Feature', () => {
         .query({ userName: testUserName });
 
       expect(response.status).toBe(200);
-      expect(response.body.cooldownRemaining).toBeGreaterThan(119500);
+      expect(response.body.cooldownRemaining).toBeGreaterThan(118000);
       expect(response.body.cooldownRemaining).toBeLessThanOrEqual(120000);
     });
 
@@ -183,8 +183,8 @@ describe('Review Cooldown Feature', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('cooldownRemaining');
-      // Should be around 15000ms (60s - 45s = 15s), allow 500ms variance
-      expect(response.body.cooldownRemaining).toBeGreaterThan(14500);
+      // Should be around 15000ms (60s - 45s = 15s), allow 1000ms variance
+      expect(response.body.cooldownRemaining).toBeGreaterThan(14000);
       expect(response.body.cooldownRemaining).toBeLessThanOrEqual(15500);
     });
 

@@ -63,6 +63,39 @@ describe('Leaderboard & Scoring', () => {
       }
     });
 
+    it('should return leaderboard ordered by most recent review for tied scores', async () => {
+      const userA = 'leaderboard_user_a';
+      const userB = 'leaderboard_user_b';
+      const userC = 'leaderboard_user_c';
+
+      await pool.query(
+        `DELETE FROM review_attempts
+         WHERE project_code = $1 AND user_name_norm IN ($2, $3, $4)`,
+        [testProjectCode, userA, userB, userC]
+      );
+
+      await pool.query(
+        `INSERT INTO review_attempts
+         (project_code, user_name, user_name_norm, category, attempt_number,
+          essay_snapshot, status, score, final_score, result_json, created_at)
+         VALUES
+         ($1, $2, $2, 'content', 1, 'essay a', 'success', 30, 90, '{"score":30}', NOW() - INTERVAL '2 days'),
+         ($1, $3, $3, 'content', 1, 'essay b', 'success', 30, 90, '{"score":30}', NOW() - INTERVAL '1 day'),
+         ($1, $4, $4, 'content', 1, 'essay c', 'success', 28, 85, '{"score":28}', NOW() - INTERVAL '3 days')`,
+        [testProjectCode, userA, userB, userC]
+      );
+
+      const response = await request(app)
+        .get(`/public/projects/${testProjectCode}/leaderboard`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThanOrEqual(3);
+      expect(response.body[0].userName).toBe(userB);
+      expect(response.body[1].userName).toBe(userA);
+      expect(response.body[2].userName).toBe(userC);
+    });
+
     it('should handle non-existent project', async () => {
       const response = await request(app)
         .get('/public/projects/NOEXIST/leaderboard');

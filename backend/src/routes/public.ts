@@ -589,7 +589,7 @@ router.get('/projects/:code/leaderboard', async (req: Request, res: Response): P
       return;
     }
     
-    // Get top 3 users by their highest final_score
+    // Get all users by their highest final_score, ordered by score DESC and most recent review first
     const leaderboardResult = await pool.query<{
       user_name: string;
       highest_score: number;
@@ -598,8 +598,7 @@ router.get('/projects/:code/leaderboard', async (req: Request, res: Response): P
        FROM review_attempts
        WHERE project_code = $1 AND final_score IS NOT NULL
        GROUP BY user_name
-       ORDER BY highest_score DESC
-       LIMIT 3`,
+       ORDER BY highest_score DESC, MAX(created_at) DESC`,
       [code]
     );
     

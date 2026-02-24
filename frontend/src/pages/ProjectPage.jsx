@@ -187,8 +187,9 @@ export default function ProjectPage() {
       setAttackWaitingResult(false);
       if (result.success) {
         alert('✅ ' + result.message);
-        // Refresh tokens
+        // Refresh tokens and leaderboard
         initializePlayer();
+        setLeaderboardRefresh(prev => prev + 1);
       } else {
         alert('🛡️ ' + result.message);
       }
@@ -329,6 +330,9 @@ export default function ProjectPage() {
       const updatedState = await publicApi.getUserState(code, userName);
       setUserState(updatedState);
       
+      // Trigger leaderboard refresh
+      setLeaderboardRefresh(prev => prev + 1);
+      
       alert('Essay submitted successfully!');
       
       // Check if feedback is enabled and user hasn't submitted yet
@@ -377,6 +381,9 @@ export default function ProjectPage() {
       console.error('Failed to reload user state after attack:', err);
     }
     
+    // Trigger leaderboard refresh since Pass scores might have changed
+    setLeaderboardRefresh(prev => prev + 1);
+    
     // Modal will close itself
   };
   
@@ -392,6 +399,9 @@ export default function ProjectPage() {
     
     // Refresh player state
     await initializePlayer();
+    
+    // Trigger leaderboard refresh when scores might have changed
+    setLeaderboardRefresh(prev => prev + 1);
   }, [initializePlayer]);
 
   const handleDefenseClose = useCallback(() => {
@@ -431,7 +441,7 @@ export default function ProjectPage() {
   }
 
   const categories = ['content', 'structure', 'mechanics'];
-  
+
   const getCategoryDisplayName = (cat) => {
     const names = {
       content: 'Story Content',
@@ -463,9 +473,9 @@ export default function ProjectPage() {
         {/* YouTube Video and Leaderboard */}
         {project.youtube_url && (
           <section style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'stretch' }}>
               {/* Video */}
-              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', borderRadius: '8px' }}>
                 <iframe
                   style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
                   src={project.youtube_url.replace('watch?v=', 'embed/')}
@@ -476,8 +486,14 @@ export default function ProjectPage() {
               </div>
               
               {/* Leaderboard */}
-              <div>
-                <Leaderboard projectCode={code} refreshTrigger={leaderboardRefresh} />
+              <div style={{ height: '100%', display: 'flex' }}>
+                <div style={{ flex: 1, height: '100%' }}>
+                  <Leaderboard
+                    projectCode={code}
+                    refreshTrigger={leaderboardRefresh}
+                    currentUserName={userNameSubmitted ? userName : ''}
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -612,7 +628,7 @@ export default function ProjectPage() {
                           width: '280px'
                         }}
                       >
-                        {attackWaitingResult ? '⏳ Waiting for result...' : '⚔️ Attack Another Player'}
+                        {attackWaitingResult ? '⏳ Waiting for result...' : '🎯 Pass to Another Player'}
                       </button>
                     </div>
                   )}
