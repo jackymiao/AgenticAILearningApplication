@@ -37,7 +37,7 @@ export default function LoginPage() {
       <div style={{ maxWidth: '400px', margin: '80px auto' }}>
         <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <h1 style={{ marginBottom: '24px', textAlign: 'center' }}>
-            {mode === 'login' ? 'Admin Login' : 'Create Admin Account'}
+            {mode === 'login' ? 'Instructor Login' : 'Create Admin Account'}
           </h1>
 
           <form onSubmit={handleSubmit}>
@@ -97,7 +97,7 @@ export default function LoginPage() {
               <>
                 Already have an account?{' '}
                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('login'); setError(''); }}>
-                  Login
+                Instructor Login
                 </a>
               </>
             )}

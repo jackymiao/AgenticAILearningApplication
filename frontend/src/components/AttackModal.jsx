@@ -84,7 +84,7 @@ export default function AttackModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content attack-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>⚔️ Choose Your Target</h2>
+          <h2>🎯 Choose Your Target</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         
@@ -132,9 +132,9 @@ export default function AttackModal({
                     {!player.canAttack ? (
                       player.reviewTokens === 0 ? '🛡️ Protected' : '✓ Attacked'
                     ) : attacking ? (
-                      'Attacking...'
+                      'Passing...'
                     ) : (
-                      '⚔️ Attack'
+                      '🎯 Pass'
                     )}
                   </button>
                 </div>

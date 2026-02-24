@@ -13,7 +13,7 @@ export default function TokenDisplay({ reviewTokens, attackTokens, shieldTokens 
       <div className="token-item">
         <AttackTokenIcon size={28} />
         <span className="token-count" data-testid="my-attack-tokens">{attackTokens}</span>
-        <span className="token-label">Attack</span>
+        <span className="token-label">Pass</span>
       </div>
       
       <div className="token-item">

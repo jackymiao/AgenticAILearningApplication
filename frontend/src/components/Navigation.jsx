@@ -40,8 +40,6 @@ export default function Navigation() {
         </Link>
         
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <Link to="/help">Help</Link>
-          
           {auth.isAdmin ? (
             <>
               <Link to="/admin">Dashboard</Link>
@@ -52,7 +50,7 @@ export default function Navigation() {
             </>
           ) : !auth.isBootstrapping && (
             <Link to="/login">
-              <button className="primary">Login</button>
+              <button className="primary">Instructor Login</button>
             </Link>
           )}
         </div>

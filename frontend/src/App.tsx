@@ -12,7 +12,6 @@ import EditProject from './pages/admin/EditProject';
 import SubmissionsList from './pages/admin/SubmissionsList.jsx';
 import SubmissionDetail from './pages/admin/SubmissionDetail';
 import ProjectFeedback from './pages/admin/ProjectFeedback.jsx';
-import HelpPage from './pages/HelpPage';
 import { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -37,7 +36,6 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/projects/:code" element={<ProjectPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/help" element={<HelpPage />} />
         
         <Route path="/admin" element={
           <ProtectedRoute>
