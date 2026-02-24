@@ -427,7 +427,7 @@ describe('ProjectPage', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('No reviews yet. Click "Submit for Review" to get feedback.')).toBeInTheDocument();
+        expect(screen.getByText('No reviews yet. Click "Use Pass to Review" to get feedback.')).toBeInTheDocument();
       });
     });
   });
@@ -656,7 +656,7 @@ describe('ProjectPage', () => {
         
         await waitFor(() => {
           const submitButton = screen.getByTestId('submit-review-btn');
-          expect(submitButton).toHaveTextContent(/Submit for Review/i);
+          expect(submitButton).toHaveTextContent(/Use Pass to Review/i);
           expect(submitButton).not.toBeDisabled();
         });
         
@@ -714,14 +714,14 @@ describe('ProjectPage', () => {
         
         await waitFor(() => {
           const submitButton = screen.getByTestId('submit-review-btn');
-          expect(submitButton).toHaveTextContent(/Submit for Review/i);
+          expect(submitButton).toHaveTextContent(/Use Pass to Review/i);
           expect(submitButton).not.toBeDisabled();
         });
         
         jest.useRealTimers();
       });
 
-      it('should show "Submit for Review" when cooldown is 0', async () => {
+      it('should show "Use Pass to Review" when cooldown is 0', async () => {
         gameApi.initPlayer.mockResolvedValue({
           reviewTokens: 3,
           attackTokens: 0,
@@ -742,7 +742,7 @@ describe('ProjectPage', () => {
         
         await waitFor(() => {
           const submitButton = screen.getByTestId('submit-review-btn');
-          expect(submitButton).toHaveTextContent(/Submit for Review/i);
+          expect(submitButton).toHaveTextContent(/Use Pass to Review/i);
           expect(submitButton).not.toBeDisabled();
         });
       });

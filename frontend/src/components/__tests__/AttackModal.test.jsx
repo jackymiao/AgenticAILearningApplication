@@ -29,7 +29,7 @@ jest.mock('../AttackModal', () => {
                   data-testid="attack-btn"
                   onClick={() => onAttack({ success: true })}
                 >
-                  🎯 Pass
+                  🎯 Attack
                 </button>
               </div>
             </div>
@@ -98,20 +98,20 @@ describe('AttackModal Component', () => {
     });
   });
 
-  describe('Pass Action', () => {
-    it('should display pass button with correct emoji and text', () => {
+  describe('Attack Action', () => {
+    it('should display attack button with correct emoji and text', () => {
       render(
         <AttackModal {...defaultProps} />
       );
-      expect(screen.getByText('🎯 Pass')).toBeInTheDocument();
+      expect(screen.getByText('🎯 Attack')).toBeInTheDocument();
     });
 
-    it('should call onAttack when pass button is clicked', () => {
+    it('should call onAttack when attack button is clicked', () => {
       render(
         <AttackModal {...defaultProps} />
       );
-      const passButton = screen.getByText('🎯 Pass');
-      fireEvent.click(passButton);
+      const attackButton = screen.getByText('🎯 Attack');
+      fireEvent.click(attackButton);
       expect(mockOnAttack).toHaveBeenCalled();
     });
   });

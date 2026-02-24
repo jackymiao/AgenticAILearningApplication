@@ -111,7 +111,7 @@ export default function DefenseModal({
         
         <div className="defense-body">
           <p className="defense-message">
-            Someone is trying to steal one of your review tokens!
+            Another player is trying to destroy one of your passes!
           </p>
           
           <div className="defense-options">
@@ -128,7 +128,7 @@ export default function DefenseModal({
               </button>
             ) : (
               <div className="no-shield-notice">
-                No shield available - you will lose 1 review token
+                No shield available - you will lose 1 pass
               </div>
             )}
             
@@ -139,7 +139,7 @@ export default function DefenseModal({
               disabled={defending}
             >
               <span>Accept</span>
-              <small>Lose 1 review token</small>
+              <small>Lose 1 pass</small>
             </button>
           </div>
         </div>

@@ -132,9 +132,9 @@ export default function AttackModal({
                     {!player.canAttack ? (
                       player.reviewTokens === 0 ? '🛡️ Protected' : '✓ Attacked'
                     ) : attacking ? (
-                      'Passing...'
+                      'Attacking...'
                     ) : (
-                      '🎯 Pass'
+                      '🎯 Attack'
                     )}
                   </button>
                 </div>

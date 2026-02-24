@@ -381,7 +381,7 @@ export default function ProjectPage() {
       console.error('Failed to reload user state after attack:', err);
     }
     
-    // Trigger leaderboard refresh since Pass scores might have changed
+    // Trigger leaderboard refresh since attack scores might have changed
     setLeaderboardRefresh(prev => prev + 1);
     
     // Modal will close itself
@@ -605,7 +605,7 @@ export default function ProjectPage() {
                     data-testid="submit-review-btn"
                     style={{ fontSize: '16px', padding: '12px 32px', width: '280px' }}
                   >
-                    {reviewLoading ? 'Processing...' : cooldownRemaining > 0 ? `Wait ${formatCooldown(cooldownRemaining)}` : tokens && tokens.reviewTokens < 1 ? 'No Review Tokens' : 'Submit for Review'}
+                    {reviewLoading ? 'Processing...' : cooldownRemaining > 0 ? `Wait ${formatCooldown(cooldownRemaining)}` : tokens && tokens.reviewTokens < 1 ? 'No Pass Tokens' : 'Use Pass to Review'}
                   </button>
                   
                   {/* Attack Button */}
@@ -628,7 +628,7 @@ export default function ProjectPage() {
                           width: '280px'
                         }}
                       >
-                        {attackWaitingResult ? '⏳ Waiting for result...' : '🎯 Pass to Another Player'}
+                        {attackWaitingResult ? '⏳ Waiting for result...' : '🎯 Destroy a Pass from Another Player'}
                       </button>
                     </div>
                   )}
@@ -823,7 +823,7 @@ export default function ProjectPage() {
                     </div>
                   ) : (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-                      No reviews yet. Click "Submit for Review" to get feedback.
+                      No reviews yet. Click "Use Pass to Review" to get feedback.
                     </div>
                   )}
                 </div>

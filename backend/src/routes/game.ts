@@ -388,15 +388,10 @@ router.post('/projects/:code/defend', async (req: Request, res: Response): Promi
         });
         
       } else {
-        // Accept attack - lose 1 review token, attacker gains 1
+        // Accept attack - target loses 1 review token
         await client.query(
           'UPDATE player_state SET review_tokens = review_tokens - 1 WHERE project_code = $1 AND user_name_norm = $2',
           [code, attack.target_name_norm]
-        );
-        
-        await client.query(
-          'UPDATE player_state SET review_tokens = LEAST(review_tokens + 1, 3) WHERE project_code = $1 AND user_name_norm = $2',
-          [code, attack.attacker_name_norm]
         );
         
         // Update attack status
@@ -411,23 +406,17 @@ router.post('/projects/:code/defend', async (req: Request, res: Response): Promi
         ws.sendAttackResult(code, attack.attacker_name, {
           success: true,
           defended: false,
-          message: 'Attack succeeded! You gained 1 review token.'
+          message: 'Attack succeeded! You destroyed 1 pass token.'
         });
         
-        // Get updated tokens for both
+        // Get updated tokens for target
         const targetTokensResult = await pool.query(
           'SELECT review_tokens, attack_tokens, shield_tokens FROM player_state WHERE project_code = $1 AND user_name_norm = $2',
           [code, attack.target_name_norm]
         );
         
-        const attackerTokensResult = await pool.query(
-          'SELECT review_tokens, attack_tokens, shield_tokens FROM player_state WHERE project_code = $1 AND user_name_norm = $2',
-          [code, attack.attacker_name_norm]
-        );
-        
-        // Broadcast token updates
+        // Broadcast token update for target only
         ws.broadcastTokenUpdate(code, attack.target_name, targetTokensResult.rows[0]);
-        ws.broadcastTokenUpdate(code, attack.attacker_name, attackerTokensResult.rows[0]);
         
         res.json({ 
           success: true, 
@@ -468,15 +457,10 @@ async function autoResolveAttack(attackId: string, projectCode: string, attacker
     
     const attack = attackResult.rows[0];
     
-    // Attack succeeds - target loses 1 token, attacker gains 1
+    // Attack succeeds - target loses 1 token
     await client.query(
       'UPDATE player_state SET review_tokens = review_tokens - 1 WHERE project_code = $1 AND user_name_norm = $2',
       [projectCode, attack.target_name_norm]
-    );
-    
-    await client.query(
-      'UPDATE player_state SET review_tokens = LEAST(review_tokens + 1, 3) WHERE project_code = $1 AND user_name_norm = $2',
-      [projectCode, attack.attacker_name_norm]
     );
     
     // Update attack status
@@ -498,20 +482,14 @@ async function autoResolveAttack(attackId: string, projectCode: string, attacker
       message: 'Attack succeeded! Target did not respond in time.'
     });
     
-    // Get updated tokens
+    // Get updated tokens for target
     const targetTokensResult = await pool.query(
       'SELECT review_tokens, attack_tokens, shield_tokens FROM player_state WHERE project_code = $1 AND user_name_norm = $2',
       [projectCode, attack.target_name_norm]
     );
     
-    const attackerTokensResult = await pool.query(
-      'SELECT review_tokens, attack_tokens, shield_tokens FROM player_state WHERE project_code = $1 AND user_name_norm = $2',
-      [projectCode, attack.attacker_name_norm]
-    );
-    
-    // Broadcast token updates
+    // Broadcast token update for target only
     ws.broadcastTokenUpdate(projectCode, targetName, targetTokensResult.rows[0]);
-    ws.broadcastTokenUpdate(projectCode, attackerName, attackerTokensResult.rows[0]);
     
   } catch (error) {
     await client.query('ROLLBACK');
