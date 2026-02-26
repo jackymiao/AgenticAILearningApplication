@@ -50,6 +50,9 @@ describe('Attack Notification Flow', () => {
       ['TEST01', 'Test Project', 'Test Description', true, '00000000-0000-0000-0000-000000000001']
     );
 
+    // Allow multiple attacks between same attacker/target
+    await pool.query('ALTER TABLE IF EXISTS attacks DROP CONSTRAINT IF EXISTS unique_attack_pair');
+
     // Setup test data
     await pool.query('DELETE FROM attacks WHERE project_code = $1', ['TEST01']);
     await pool.query('DELETE FROM player_state WHERE project_code = $1', ['TEST01']);
@@ -178,11 +181,12 @@ describe('Attack Notification Flow', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
-        error: 'Target has no tokens to steal',
+        error: 'Target has no passes available to destroy',
       });
 
       // Verify no notification was sent
-      const calls = (mockSendAttackNotification as any).getCalls(); expect(calls.length).toBe(0);
+      const calls = (mockSendAttackNotification as any).getCalls(); 
+      expect(calls.length).toBe(0);
 
       // Restore Bob's tokens for next tests
       await pool.query(
@@ -194,6 +198,12 @@ describe('Attack Notification Flow', () => {
     it('should handle target not connected (offline)', async () => {
       // Delete previous attack
       await pool.query('DELETE FROM attacks WHERE project_code = $1', ['TEST01']);
+
+      // Ensure Bob has 2+ tokens (since Bob hasn't attempted review yet, minimum is 2)
+      await pool.query(
+        'UPDATE player_state SET review_tokens = 2 WHERE project_code = $1 AND user_name_norm = $2',
+        ['TEST01', 'bob']
+      );
 
       // Give Alice attack token
       await pool.query(
@@ -222,10 +232,16 @@ describe('Attack Notification Flow', () => {
       ]);
     });
 
-    it('should prevent duplicate attacks on same target', async () => {
+    it('should allow multiple attacks on same target (no duplicate restriction)', async () => {
       // Delete existing attacks first
       await pool.query('DELETE FROM attacks WHERE project_code = $1', ['TEST01']);
       
+      // Ensure Bob has enough tokens for multiple attacks
+      await pool.query(
+        'UPDATE player_state SET review_tokens = 3 WHERE project_code = $1 AND user_name_norm = $2',
+        ['TEST01', 'bob']
+      );
+
       // Create an existing attack
       const existingAttack = await pool.query(
         `INSERT INTO attacks (project_code, attacker_name, attacker_name_norm, target_name, target_name_norm, status, expires_at)
@@ -234,13 +250,13 @@ describe('Attack Notification Flow', () => {
         ['TEST01', 'Alice', 'alice', 'Bob', 'bob']
       );
 
-      // Give Alice attack token
+      // Give Alice 2 attack tokens
       await pool.query(
-        'UPDATE player_state SET attack_tokens = 1 WHERE project_code = $1 AND user_name_norm = $2',
+        'UPDATE player_state SET attack_tokens = 2 WHERE project_code = $1 AND user_name_norm = $2',
         ['TEST01', 'alice']
       );
 
-      // Try to attack same target again
+      // Try to attack same target again - should now be allowed
       const response = await request(app)
         .post('/game/projects/TEST01/attack')
         .send({
@@ -248,16 +264,15 @@ describe('Attack Notification Flow', () => {
           targetName: 'Bob',
         });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toEqual({
-        error: 'You have already attacked this player',
-      });
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
 
-      // Verify no new notification was sent
-      const calls = (mockSendAttackNotification as any).getCalls(); expect(calls.length).toBe(0);
+      // Verify notification was sent for the new attack
+      const calls = (mockSendAttackNotification as any).getCalls(); 
+      expect(calls.length).toBe(1);
 
       // Cleanup
-      await pool.query('DELETE FROM attacks WHERE id = $1', [existingAttack.rows[0].id]);
+      await pool.query('DELETE FROM attacks WHERE project_code = $1', ['TEST01']);
     });
   });
 

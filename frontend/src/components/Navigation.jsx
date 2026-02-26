@@ -49,9 +49,12 @@ export default function Navigation() {
               </button>
             </>
           ) : !auth.isBootstrapping && (
-            <Link to="/login">
-              <button className="primary">Instructor Login</button>
-            </Link>
+            <button
+              className="primary"
+              onClick={() => navigate('/login')}
+            >
+              Instructor Login
+            </button>
           )}
         </div>
       </div>

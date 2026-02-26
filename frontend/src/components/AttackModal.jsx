@@ -130,7 +130,7 @@ export default function AttackModal({
                     disabled={!player.canAttack || attacking}
                   >
                     {!player.canAttack ? (
-                      player.reviewTokens === 0 ? '🛡️ Protected' : '✓ Attacked'
+                      '🛡️ Protected'
                     ) : attacking ? (
                       'Attacking...'
                     ) : (

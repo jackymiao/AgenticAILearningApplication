@@ -148,13 +148,12 @@ router.get('/projects/:code/active-players', async (req: Request, res: Response)
          p.shield_tokens,
          CASE 
            WHEN EXISTS (
-             SELECT 1 FROM attacks 
+             SELECT 1 FROM review_attempts 
              WHERE project_code = $1 
-             AND attacker_name_norm = $2 
-             AND target_name_norm = s.user_name_norm
+             AND user_name_norm = s.user_name_norm
            ) THEN true
            ELSE false
-         END as already_attacked
+         END as has_attempted_review
        FROM active_sessions s
        JOIN player_state p ON s.project_code = p.project_code AND s.user_name_norm = p.user_name_norm
        WHERE s.project_code = $1
@@ -168,7 +167,7 @@ router.get('/projects/:code/active-players', async (req: Request, res: Response)
       userName: row.user_name,
       reviewTokens: row.review_tokens,
       shieldTokens: row.shield_tokens,
-      canAttack: row.review_tokens > 0 && !row.already_attacked
+      canAttack: row.has_attempted_review ? row.review_tokens >= 1 : row.review_tokens > 1
     }));
     
     res.json(players);
@@ -215,27 +214,29 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
         return;
       }
       
-      // Check target has tokens to steal
+      // Check target has tokens to destroy (need to also check if they've attempted review)
       const targetResult = await client.query(
-        'SELECT review_tokens FROM player_state WHERE project_code = $1 AND user_name_norm = $2',
+        `SELECT p.review_tokens,
+                CASE WHEN EXISTS (
+                  SELECT 1 FROM review_attempts WHERE project_code = $1 AND user_name_norm = $2
+                ) THEN true ELSE false END as has_attempted_review
+         FROM player_state p
+         WHERE p.project_code = $1 AND p.user_name_norm = $2`,
         [code, targetNameNorm]
       );
       
-      if (targetResult.rows.length === 0 || targetResult.rows[0].review_tokens < 1) {
+      if (targetResult.rows.length === 0) {
         await client.query('ROLLBACK');
-        res.status(400).json({ error: 'Target has no tokens to steal' });
+        res.status(400).json({ error: 'Target not found' });
         return;
       }
       
-      // Check if already attacked this target
-      const existingAttack = await client.query(
-        'SELECT id FROM attacks WHERE project_code = $1 AND attacker_name_norm = $2 AND target_name_norm = $3',
-        [code, attackerNameNorm, targetNameNorm]
-      );
+      const targetData = targetResult.rows[0];
+      const minTokensRequired = targetData.has_attempted_review ? 1 : 2;
       
-      if (existingAttack.rows.length > 0) {
+      if (targetData.review_tokens < minTokensRequired) {
         await client.query('ROLLBACK');
-        res.status(400).json({ error: 'You have already attacked this player' });
+        res.status(400).json({ error: 'Target has no passes available to destroy' });
         return;
       }
       

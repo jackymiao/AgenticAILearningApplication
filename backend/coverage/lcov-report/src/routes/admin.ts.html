@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/261</span>
+                <span class='fraction'>0/259</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/144</span>
+                <span class='fraction'>0/136</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/255</span>
+                <span class='fraction'>0/253</span>
             </div>
         
             
@@ -707,20 +707,7 @@
 <a name='L642'></a><a href='#L642'>642</a>
 <a name='L643'></a><a href='#L643'>643</a>
 <a name='L644'></a><a href='#L644'>644</a>
-<a name='L645'></a><a href='#L645'>645</a>
-<a name='L646'></a><a href='#L646'>646</a>
-<a name='L647'></a><a href='#L647'>647</a>
-<a name='L648'></a><a href='#L648'>648</a>
-<a name='L649'></a><a href='#L649'>649</a>
-<a name='L650'></a><a href='#L650'>650</a>
-<a name='L651'></a><a href='#L651'>651</a>
-<a name='L652'></a><a href='#L652'>652</a>
-<a name='L653'></a><a href='#L653'>653</a>
-<a name='L654'></a><a href='#L654'>654</a>
-<a name='L655'></a><a href='#L655'>655</a>
-<a name='L656'></a><a href='#L656'>656</a>
-<a name='L657'></a><a href='#L657'>657</a>
-<a name='L658'></a><a href='#L658'>658</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L645'></a><a href='#L645'>645</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -832,9 +819,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -875,18 +859,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -897,6 +869,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1489,9 +1463,6 @@ function <span class="fstat-no" title="function not covered" >validateHeaderKeys
 // Create project
 <span class="cstat-no" title="statement not covered" >router.post('/projects', <span class="fstat-no" title="function not covered" >async </span>(req: Request, res: Response): Promise&lt;void&gt; =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[CREATE PROJECT] Request body:', req.body);</span>
-<span class="cstat-no" title="statement not covered" >    console.log('[CREATE PROJECT] Session adminId:', req.session.adminId);</span>
-    
     const {
       code,
       title,
@@ -1520,18 +1491,6 @@ function <span class="fstat-no" title="function not covered" >validateHeaderKeys
     
     const codeNorm = <span class="cstat-no" title="statement not covered" >normalizeProjectCode(code);</span>
     
-<span class="cstat-no" title="statement not covered" >    console.log('[CREATE PROJECT] Inserting with params:', {</span>
-      codeNorm,
-      title,
-      description,
-      youtubeUrl: youtubeUrl || null,
-      wordLimit: Number(wordLimit) || 150,
-      attemptLimitPerCategory: Number(attemptLimitPerCategory) || 3,
-      reviewCooldownSeconds: Number(reviewCooldownSeconds) || 120,
-      adminId: req.session.adminId,
-      enabled: enabled !== false &amp;&amp; enabled !== 'false'
-    });
-    
     const result = <span class="cstat-no" title="statement not covered" >await pool.query&lt;Project&gt;(</span>
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
@@ -1553,7 +1512,9 @@ function <span class="fstat-no" title="function not covered" >validateHeaderKeys
       ]
     );
     
-<span class="cstat-no" title="statement not covered" >    console.log('[CREATE PROJECT] Success:', result.rows[0]);</span>
+<span class="cstat-no" title="statement not covered" >    if (process.env.DEBUG === '1') {</span>
+<span class="cstat-no" title="statement not covered" >      console.log('[CREATE PROJECT] Success:', result.rows[0]);</span>
+    }
 <span class="cstat-no" title="statement not covered" >    res.status(201).json(result.rows[0]);</span>
   } catch (error: any) {
 <span class="cstat-no" title="statement not covered" >    console.error('[CREATE PROJECT] Error:', error);</span>
@@ -2041,7 +2002,7 @@ export default router;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-15T05:36:15.913Z
+                at 2026-02-24T01:50:32.823Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

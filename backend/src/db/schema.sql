@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS active_sessions (
 );
 
 -- Create attacks table for game mechanics
+ALTER TABLE IF EXISTS attacks DROP CONSTRAINT IF EXISTS unique_attack_pair;
 CREATE TABLE IF NOT EXISTS attacks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_code CHAR(6) NOT NULL REFERENCES projects(code) ON DELETE CASCADE,
@@ -130,9 +131,7 @@ CREATE TABLE IF NOT EXISTS attacks (
   shield_used BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   responded_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ NOT NULL,
-  
-  CONSTRAINT unique_attack_pair UNIQUE (project_code, attacker_name_norm, target_name_norm)
+  expires_at TIMESTAMPTZ NOT NULL
 );
 
 -- Create indexes for game tables
