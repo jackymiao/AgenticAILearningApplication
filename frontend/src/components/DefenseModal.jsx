@@ -39,12 +39,12 @@ export default function DefenseModal({
       if (!response.ok) {
         throw new Error(data.error || 'Defense failed');
       }
-      
+
       onDefend(data);
-      onClose();
+      // Don't call onClose() - modal will close naturally when queue updates and attackId becomes null
     } catch (err) {
       console.error('Defense error:', err);
-      // Even on error, close the modal
+      // On error, close the modal
       onClose();
     }
   }, [attackId, projectCode, onDefend, onClose]);

@@ -482,12 +482,13 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       savedAttempts.push(insertResult.rows[0]);
     }
     
-    // Update player state: deduct review token, add attack token (max 1), update last_review_at
+    // Update player state: deduct review token, add attack token (max 1), update last_review_at, set first review flag
     await pool.query(
       `UPDATE player_state 
        SET review_tokens = review_tokens - 1,
            attack_tokens = LEAST(attack_tokens + 1, 1),
            last_review_at = NOW(),
+           has_submitted_first_review = true,
            updated_at = NOW()
        WHERE project_code = $1 AND user_name_norm = $2`,
       [code, userNameNorm]

@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS player_state (
   review_tokens INTEGER NOT NULL DEFAULT 3,
   attack_tokens INTEGER NOT NULL DEFAULT 0,
   shield_tokens INTEGER NOT NULL DEFAULT 1,
+  has_submitted_first_review BOOLEAN NOT NULL DEFAULT false,
   last_review_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

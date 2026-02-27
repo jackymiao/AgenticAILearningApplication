@@ -9,6 +9,7 @@ import DefenseModal from '../components/DefenseModal';
 import FeedbackModal from '../components/FeedbackModal';
 import { publicApi, gameApi } from '../api/endpoints';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useQueue } from '../hooks/useQueue';
 
 export default function ProjectPage() {
   const { code } = useParams();
@@ -31,7 +32,7 @@ export default function ProjectPage() {
   const [tokens, setTokens] = useState(null);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const [showAttackModal, setShowAttackModal] = useState(false);
-  const [incomingAttackId, setIncomingAttackId] = useState(null);
+  const incomingAttackQueue = useQueue();
   const [attackWaitingResult, setAttackWaitingResult] = useState(false);
   const [cooldownEnds, setCooldownEnds] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
@@ -158,42 +159,49 @@ export default function ProjectPage() {
     }
   }, [code, userName]);
   
+  // WebSocket callbacks wrapped in useCallback to maintain stable references
+  const handleOnAttackReceived = useCallback((attackId) => {
+    // Handle incoming attack - add to queue for sequential display
+    incomingAttackQueue.enqueue(attackId);
+  }, [incomingAttackQueue]);
+
+  const handleOnTokenUpdate = useCallback(async (updatedTokens) => {
+    // Handle token update
+    setTokens({
+      reviewTokens: updatedTokens.review_tokens,
+      attackTokens: updatedTokens.attack_tokens,
+      shieldTokens: updatedTokens.shield_tokens
+    });
+    
+    // Also update userState to reflect review_tokens as attemptsRemaining
+    try {
+      const updatedState = await publicApi.getUserState(code, userName);
+      setUserState(updatedState);
+    } catch (err) {
+      console.error('Failed to reload user state after token update:', err);
+    }
+  }, [code, userName]);
+
+  const handleOnAttackResult = useCallback((result) => {
+    // Handle attack result
+    setAttackWaitingResult(false);
+    if (result.success) {
+      alert('✅ ' + result.message);
+      // Refresh tokens and leaderboard
+      initializePlayer();
+      setLeaderboardRefresh(prev => prev + 1);
+    } else {
+      alert('🛡️ ' + result.message);
+    }
+  }, [initializePlayer]);
+
   // WebSocket connection for real-time game events
   useWebSocket(
     code,
     userNameSubmitted ? userName : null,
-    (attackId) => {
-      // Handle incoming attack
-      setIncomingAttackId(attackId);
-    },
-    async (updatedTokens) => {
-      // Handle token update
-      setTokens({
-        reviewTokens: updatedTokens.review_tokens,
-        attackTokens: updatedTokens.attack_tokens,
-        shieldTokens: updatedTokens.shield_tokens
-      });
-      
-      // Also update userState to reflect review_tokens as attemptsRemaining
-      try {
-        const updatedState = await publicApi.getUserState(code, userName);
-        setUserState(updatedState);
-      } catch (err) {
-        console.error('Failed to reload user state after token update:', err);
-      }
-    },
-    (result) => {
-      // Handle attack result
-      setAttackWaitingResult(false);
-      if (result.success) {
-        alert('✅ ' + result.message);
-        // Refresh tokens and leaderboard
-        initializePlayer();
-        setLeaderboardRefresh(prev => prev + 1);
-      } else {
-        alert('🛡️ ' + result.message);
-      }
-    }
+    handleOnAttackReceived,
+    handleOnTokenUpdate,
+    handleOnAttackResult
   );
   
   // Heartbeat to maintain active session
@@ -395,18 +403,21 @@ export default function ProjectPage() {
         shieldTokens: result.tokens.shield_tokens
       });
     }
-    setIncomingAttackId(null);
+    
+    // Move to next attack in queue
+    incomingAttackQueue.dequeue();
     
     // Refresh player state
     await initializePlayer();
     
     // Trigger leaderboard refresh when scores might have changed
     setLeaderboardRefresh(prev => prev + 1);
-  }, [initializePlayer]);
+  }, [initializePlayer, incomingAttackQueue]);
 
   const handleDefenseClose = useCallback(() => {
-    setIncomingAttackId(null);
-  }, []);
+    // Move to next attack in queue (skip current unresponded attack)
+    incomingAttackQueue.dequeue();
+  }, [incomingAttackQueue]);
   
   const formatCooldown = (ms) => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -646,7 +657,7 @@ export default function ProjectPage() {
             />
             
             <DefenseModal
-              attackId={incomingAttackId}
+              attackId={incomingAttackQueue.peek()}
               projectCode={code}
               hasShield={tokens && tokens.shieldTokens > 0}
               onDefend={handleDefenseResponse}

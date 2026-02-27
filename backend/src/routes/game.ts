@@ -146,14 +146,7 @@ router.get('/projects/:code/active-players', async (req: Request, res: Response)
          s.user_name_norm,
          p.review_tokens,
          p.shield_tokens,
-         CASE 
-           WHEN EXISTS (
-             SELECT 1 FROM review_attempts 
-             WHERE project_code = $1 
-             AND user_name_norm = s.user_name_norm
-           ) THEN true
-           ELSE false
-         END as has_attempted_review
+         p.has_submitted_first_review
        FROM active_sessions s
        JOIN player_state p ON s.project_code = p.project_code AND s.user_name_norm = p.user_name_norm
        WHERE s.project_code = $1
@@ -167,7 +160,7 @@ router.get('/projects/:code/active-players', async (req: Request, res: Response)
       userName: row.user_name,
       reviewTokens: row.review_tokens,
       shieldTokens: row.shield_tokens,
-      canAttack: row.has_attempted_review ? row.review_tokens >= 1 : row.review_tokens > 1
+      canAttack: row.has_submitted_first_review ? row.review_tokens >= 1 : row.review_tokens > 1
     }));
     
     res.json(players);
@@ -214,14 +207,11 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
         return;
       }
       
-      // Check target has tokens to destroy (need to also check if they've attempted review)
+      // Check target has tokens to destroy (check if they've submitted first review)
       const targetResult = await client.query(
-        `SELECT p.review_tokens,
-                CASE WHEN EXISTS (
-                  SELECT 1 FROM review_attempts WHERE project_code = $1 AND user_name_norm = $2
-                ) THEN true ELSE false END as has_attempted_review
-         FROM player_state p
-         WHERE p.project_code = $1 AND p.user_name_norm = $2`,
+        `SELECT review_tokens, has_submitted_first_review
+         FROM player_state
+         WHERE project_code = $1 AND user_name_norm = $2`,
         [code, targetNameNorm]
       );
       
@@ -232,7 +222,7 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
       }
       
       const targetData = targetResult.rows[0];
-      const minTokensRequired = targetData.has_attempted_review ? 1 : 2;
+      const minTokensRequired = targetData.has_submitted_first_review ? 1 : 2;
       
       if (targetData.review_tokens < minTokensRequired) {
         await client.query('ROLLBACK');
