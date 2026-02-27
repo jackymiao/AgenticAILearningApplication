@@ -37,9 +37,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Trust Render's proxy (required for secure cookies to work)
-app.set('trust proxy', 1);
-
 // Session store
 const PgStore = pgSession(session);
 

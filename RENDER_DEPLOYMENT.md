@@ -12,7 +12,6 @@
 ### 1. Create PostgreSQL Database
 
 **Option A: Using Neon (Recommended)**
-
 - [ ] Go to [Neon Console](https://console.neon.tech/)
 - [ ] Create new project: `essay-grading-db`
 - [ ] Select region closest to your Render service
@@ -20,7 +19,6 @@
 - [ ] Make sure to use the **pooled connection string** for better performance
 
 **Option B: Using Render PostgreSQL**
-
 - [ ] In Render dashboard, click "New +" → "PostgreSQL"
 - [ ] Name: `essay-grading-db`
 - [ ] Region: Choose closest to your users
@@ -66,14 +64,12 @@ Click "Environment" tab and add:
 **Important: You must run the migration to create required tables!**
 
 Option A - Using Render Shell (Preferred):
-
 - [ ] Go to backend service → "Shell" tab
 - [ ] Run: `npm install tsx` (if not already installed)
 - [ ] Run: `npm run db:migrate`
 - [ ] Should see: "✅ Database migrations completed successfully"
 
 Option B - Using One-Off Job:
-
 - [ ] In service settings, create manual job
 - [ ] Command: `npm run db:migrate`
 - [ ] Run job
@@ -87,11 +83,9 @@ Option B - Using One-Off Job:
 
 ## 🎨 Frontend Deployment
 
-### 1. Create Web Service (Not Static Site)
+### 1. Create Static Site
 
-**Note:** We deploy frontend as a Web Service with a proxy to fix third-party cookie issues (works in incognito mode).
-
-- [ ] Click "New +" → "Web Service"
+- [ ] Click "New +" → "Static Site"
 - [ ] Connect to same GitHub repository
 - [ ] Configure:
   - **Name**: `essay-grading-frontend`
@@ -99,19 +93,35 @@ Option B - Using One-Off Job:
   - **Branch**: `main`
   - **Root Directory**: `frontend`
   - **Build Command**: `npm install && npm run build`
-  - **Start Command**: `npm start`
-  - **Plan**: Free (or paid)
+  - **Publish Directory**: `dist`
 
 ### 2. Set Frontend Environment Variable
 
 - [ ] Click "Environment" tab
-- [ ] Add: `BACKEND_URL` = `https://your-backend-url.onrender.com`
-  - Use the backend URL from Backend Step 4 (without `/api` suffix)
-  - Example: `https://essay-grading-backend-xxxx.onrender.com`
+- [ ] Add: `VITE_API_BASE` = `https://your-backend-url.onrender.com/api`
+  - Use the backend URL from Backend Step 4
 
-### 3. Deploy Frontend
+### 3. Configure SPA Routing
 
-- [ ] Click "Create Web Service"
+Since Render doesn't have a Redirects/Rewrites UI for static sites, create a `_redirects` file:
+
+- [ ] In your local `frontend/public/` directory, create a file named `_redirects`
+- [ ] Add this single line to the file:
+  ```
+  /*    /index.html   200
+  ```
+- [ ] Commit and push to GitHub:
+  ```bash
+  git add frontend/public/_redirects
+  git commit -m "Add _redirects for SPA routing"
+  git push
+  ```
+
+This tells Render to serve `index.html` for all routes, allowing React Router to handle client-side navigation.
+
+### 4. Deploy Frontend
+
+- [ ] Click "Create Static Site"
 - [ ] Wait for deployment
 - [ ] **Copy the frontend URL** (e.g., `https://essay-grading-frontend.onrender.com`)
 
@@ -160,48 +170,34 @@ Option B - Using One-Off Job:
 ## 🐛 Troubleshooting
 
 ### Backend Health Check Fails
-
 - [ ] Check build logs for errors
 - [ ] Verify all environment variables are set
 - [ ] Check database connection
 - [ ] Review runtime logs
 
 ### Frontend Can't Reach Backend
-
-- [ ] Verify `BACKEND_URL` is set correctly in frontend environment
-- [ ] Check that backend `FRONTEND_URL` matches actual frontend URL
+- [ ] Verify `VITE_API_BASE` is correct
+- [ ] Check CORS configuration in backend
 - [ ] Review browser console for specific errors
-- [ ] Check frontend proxy is working (look for /api requests)
-- [ ] Verify backend is running and healthy
+- [ ] Verify backend `FRONTEND_URL` matches actual frontend URL
 
 ### Database Connection Issues
-
 - [ ] Confirm `DATABASE_URL` is the **internal** URL (not external)
 - [ ] Check database is running
 - [ ] Verify SSL settings if using external PostgreSQL
 
 ### Agent Calls Fail
-
 - [ ] Check `OPENAI_API_KEY` is valid
 - [ ] Verify agent IDs are correct format
 - [ ] Review backend logs for OpenAI errors
 - [ ] Test agent in OpenAI playground first
 
 ### Sessions Don't Persist
-
 - [ ] Verify `SESSION_SECRET` is set
-- [ ] Check `trust proxy` is set to `1` in backend
-- [ ] Verify cookies are `secure: true, sameSite: 'none'` in production
-- [ ] With proxy setup, session issues should be resolved (same-origin)
-
-### Authentication Fails in Incognito/Private Mode
-
-- [ ] This is fixed by using the proxy approach (frontend as Web Service)
-- [ ] Cookies work because frontend/backend appear as same origin
-- [ ] Verify `BACKEND_URL` is set in frontend environment
+- [ ] Check cookie settings in production
+- [ ] May need `SameSite=None; Secure` for cross-domain
 
 ### "Too Many Redirects" Error
-
 - [ ] Check SPA rewrite rule is configured
 - [ ] Verify it's set to "Rewrite" not "Redirect"
 - [ ] Clear browser cache
@@ -209,7 +205,6 @@ Option B - Using One-Off Job:
 ## 🚀 Going Live
 
 ### Before Launch
-
 - [ ] Change `ADMIN_SIGNUP_CODE` to something secure
 - [ ] Set up real Agent Builder agents with proper prompts
 - [ ] Test all flows thoroughly
@@ -217,14 +212,12 @@ Option B - Using One-Off Job:
 - [ ] Set up monitoring/alerts in Render
 
 ### Custom Domain (Optional)
-
 - [ ] In frontend service, go to "Settings" → "Custom Domain"
 - [ ] Add your domain
 - [ ] Update DNS records as instructed
 - [ ] Update backend `FRONTEND_URL` to match
 
 ### Security Checklist
-
 - [ ] Strong `SESSION_SECRET` (32+ random characters)
 - [ ] Secure `ADMIN_SIGNUP_CODE` (for regular admins, not shared publicly)
 - [ ] Secure `SUPER_ADMIN_CODE` (for super admin access, keep very private)
@@ -233,14 +226,11 @@ Option B - Using One-Off Job:
 - [ ] API key stored in environment variables (not in code)
 
 ### Admin Role System
-
 This system uses two-tier admin access:
-
 - **Regular Admins**: Create account with `ADMIN_SIGNUP_CODE`, can only see/manage their own projects
 - **Super Admins**: Create account with `SUPER_ADMIN_CODE`, can see/manage all projects
 
 To set up super admin after deployment:
-
 1. Add `SUPER_ADMIN_CODE` environment variable in Render
 2. Run migration: `psql $DATABASE_URL -f backend/src/db/migrations/add_super_admin.sql`
 3. Create super admin account using the super admin code during signup
@@ -248,7 +238,6 @@ To set up super admin after deployment:
 ## 📊 Monitoring
 
 After deployment, regularly check:
-
 - [ ] Render service health dashboards
 - [ ] Database usage and performance
 - [ ] Application logs for errors

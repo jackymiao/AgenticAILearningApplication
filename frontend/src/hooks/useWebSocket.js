@@ -35,9 +35,22 @@ export function useWebSocket(
 
     const connect = () => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
-      // With proxy, WebSocket is on same origin at /ws
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      if (import.meta.env.DEBUG === "1") {
+        console.log("[WS] API_BASE:", API_BASE);
+      }
+
+      // Determine WebSocket URL based on API_BASE
+      let wsUrl;
+      if (API_BASE.startsWith("http://") || API_BASE.startsWith("https://")) {
+        // Production: Use backend URL (VITE_API_BASE is full URL like https://backend.com/api)
+        const backendUrl = new URL(API_BASE);
+        wsUrl = `${protocol}//${backendUrl.hostname}${backendUrl.port ? ":" + backendUrl.port : ""}/ws`;
+      } else {
+        // Development: Use localhost:3000
+        wsUrl = `${protocol}//${window.location.hostname}:3000/ws`;
+      }
 
       if (import.meta.env.DEBUG === "1") {
         console.log("[WS] Connecting to:", wsUrl);
