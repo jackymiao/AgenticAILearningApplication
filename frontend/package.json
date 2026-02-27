@@ -9,12 +9,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "start": "node server.js",
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6",
     "jspdf": "^2.5.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
