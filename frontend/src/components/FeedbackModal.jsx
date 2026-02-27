@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 
+// Use same pattern as DefenseModal and AttackModal for consistency
+const API_BASE = typeof process !== 'undefined' && process.env.VITE_API_BASE 
+  ? process.env.VITE_API_BASE 
+  : '/api';
+
 export default function FeedbackModal({ projectCode, userName, onClose }) {
   const [ratings, setRatings] = useState({
     contentRating: 0,
@@ -41,9 +46,13 @@ export default function FeedbackModal({ projectCode, userName, onClose }) {
     setError('');
 
     try {
-      const response = await fetch(`/api/public/${projectCode}/feedback/submit`, {
+      const url = `${API_BASE}/public/${projectCode}/feedback/submit`;
+      console.log('[FeedbackModal] Submitting to:', url);
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           userName,
           ...ratings,
@@ -51,13 +60,18 @@ export default function FeedbackModal({ projectCode, userName, onClose }) {
         })
       });
 
+      console.log('[FeedbackModal] Response status:', response.status);
+
       if (!response.ok) {
         const data = await response.json();
+        console.error('[FeedbackModal] Submission failed:', data);
         throw new Error(data.error || 'Failed to submit feedback');
       }
 
+      console.log('[FeedbackModal] Feedback submitted successfully');
       onClose(true); // true = feedback submitted
     } catch (err) {
+      console.error('[FeedbackModal] Error:', err);
       setError(err.message);
       setSubmitting(false);
     }
