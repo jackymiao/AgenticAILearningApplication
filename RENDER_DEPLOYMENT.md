@@ -12,6 +12,7 @@
 ### 1. Create PostgreSQL Database
 
 **Option A: Using Neon (Recommended)**
+
 - [ ] Go to [Neon Console](https://console.neon.tech/)
 - [ ] Create new project: `essay-grading-db`
 - [ ] Select region closest to your Render service
@@ -19,6 +20,7 @@
 - [ ] Make sure to use the **pooled connection string** for better performance
 
 **Option B: Using Render PostgreSQL**
+
 - [ ] In Render dashboard, click "New +" → "PostgreSQL"
 - [ ] Name: `essay-grading-db`
 - [ ] Region: Choose closest to your users
@@ -64,12 +66,14 @@ Click "Environment" tab and add:
 **Important: You must run the migration to create required tables!**
 
 Option A - Using Render Shell (Preferred):
+
 - [ ] Go to backend service → "Shell" tab
 - [ ] Run: `npm install tsx` (if not already installed)
 - [ ] Run: `npm run db:migrate`
 - [ ] Should see: "✅ Database migrations completed successfully"
 
 Option B - Using One-Off Job:
+
 - [ ] In service settings, create manual job
 - [ ] Command: `npm run db:migrate`
 - [ ] Run job
@@ -92,16 +96,14 @@ Option B - Using One-Off Job:
   - **Region**: Same as backend
   - **Branch**: `main`
   - **Root Directory**: `frontend`
-  - **Build Command**: `npm install && npm run build`
+  - **Build Command**: `VITE_API_BASE=https://your-backend-url.onrender.com/api npm install && npm run build`
+    - **IMPORTANT**: Replace `your-backend-url` with your actual backend URL from step 4
+    - Example: `VITE_API_BASE=https://essay-grading-backend-abc123.onrender.com/api npm install && npm run build`
   - **Publish Directory**: `dist`
 
-### 2. Set Frontend Environment Variable
+### 2. Configure SPA Routing (No Environment Variables Needed)
 
-- [ ] Click "Environment" tab
-- [ ] Add: `VITE_API_BASE` = `https://your-backend-url.onrender.com/api`
-  - Use the backend URL from Backend Step 4
-
-### 3. Configure SPA Routing
+**Note:** For Render Static Sites, environment variables must be set in the build command (see above), not in the Environment tab. The Environment tab doesn't work for static sites during builds.
 
 Since Render doesn't have a Redirects/Rewrites UI for static sites, create a `_redirects` file:
 
@@ -170,34 +172,55 @@ This tells Render to serve `index.html` for all routes, allowing React Router to
 ## 🐛 Troubleshooting
 
 ### Backend Health Check Fails
+
 - [ ] Check build logs for errors
 - [ ] Verify all environment variables are set
 - [ ] Check database connection
 - [ ] Review runtime logs
 
 ### Frontend Can't Reach Backend
-- [ ] Verify `VITE_API_BASE` is correct
+
+- [ ] Verify `VITE_API_BASE` is set **in the build command**, not Environment tab
+  - Build command should be: `VITE_API_BASE=https://your-backend.onrender.com/api npm install && npm run build`
 - [ ] Check CORS configuration in backend
 - [ ] Review browser console for specific errors
 - [ ] Verify backend `FRONTEND_URL` matches actual frontend URL
+- [ ] Verify backend has `trust proxy` set to `1` in production
 
 ### Database Connection Issues
+
 - [ ] Confirm `DATABASE_URL` is the **internal** URL (not external)
 - [ ] Check database is running
 - [ ] Verify SSL settings if using external PostgreSQL
 
 ### Agent Calls Fail
+
 - [ ] Check `OPENAI_API_KEY` is valid
 - [ ] Verify agent IDs are correct format
 - [ ] Review backend logs for OpenAI errors
 - [ ] Test agent in OpenAI playground first
 
 ### Sessions Don't Persist
+
 - [ ] Verify `SESSION_SECRET` is set
-- [ ] Check cookie settings in production
-- [ ] May need `SameSite=None; Secure` for cross-domain
+- [ ] Check `trust proxy` is set to `1` in backend code
+- [ ] Verify cookies have `secure: true` and `sameSite: 'none'` in production
+- [ ] Check backend logs to see if session ID is being created
+
+### Authentication Doesn't Work in Incognito/Private Mode
+
+**This is expected behavior** - most browsers block third-party cookies in incognito mode by default. Since the frontend and backend are on different domains, cookies are considered "third-party" and blocked.
+
+**Workarounds:**
+
+- [ ] Users can use regular (non-incognito) browser windows
+- [ ] For testing, some browsers allow third-party cookies in settings
+- [ ] For production, consider using same domain or subdomain setup (requires custom domain)
+
+**Note:** This is a browser security feature, not an application bug.
 
 ### "Too Many Redirects" Error
+
 - [ ] Check SPA rewrite rule is configured
 - [ ] Verify it's set to "Rewrite" not "Redirect"
 - [ ] Clear browser cache
@@ -205,6 +228,7 @@ This tells Render to serve `index.html` for all routes, allowing React Router to
 ## 🚀 Going Live
 
 ### Before Launch
+
 - [ ] Change `ADMIN_SIGNUP_CODE` to something secure
 - [ ] Set up real Agent Builder agents with proper prompts
 - [ ] Test all flows thoroughly
@@ -212,12 +236,14 @@ This tells Render to serve `index.html` for all routes, allowing React Router to
 - [ ] Set up monitoring/alerts in Render
 
 ### Custom Domain (Optional)
+
 - [ ] In frontend service, go to "Settings" → "Custom Domain"
 - [ ] Add your domain
 - [ ] Update DNS records as instructed
 - [ ] Update backend `FRONTEND_URL` to match
 
 ### Security Checklist
+
 - [ ] Strong `SESSION_SECRET` (32+ random characters)
 - [ ] Secure `ADMIN_SIGNUP_CODE` (for regular admins, not shared publicly)
 - [ ] Secure `SUPER_ADMIN_CODE` (for super admin access, keep very private)
@@ -226,11 +252,14 @@ This tells Render to serve `index.html` for all routes, allowing React Router to
 - [ ] API key stored in environment variables (not in code)
 
 ### Admin Role System
+
 This system uses two-tier admin access:
+
 - **Regular Admins**: Create account with `ADMIN_SIGNUP_CODE`, can only see/manage their own projects
 - **Super Admins**: Create account with `SUPER_ADMIN_CODE`, can see/manage all projects
 
 To set up super admin after deployment:
+
 1. Add `SUPER_ADMIN_CODE` environment variable in Render
 2. Run migration: `psql $DATABASE_URL -f backend/src/db/migrations/add_super_admin.sql`
 3. Create super admin account using the super admin code during signup
@@ -238,6 +267,7 @@ To set up super admin after deployment:
 ## 📊 Monitoring
 
 After deployment, regularly check:
+
 - [ ] Render service health dashboards
 - [ ] Database usage and performance
 - [ ] Application logs for errors
