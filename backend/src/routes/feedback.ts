@@ -17,14 +17,18 @@ router.post('/:code/feedback/submit', async (req: Request, res: Response): Promi
       comment
     } = req.body;
 
+    console.log(`[FEEDBACK] Submission attempt for project ${code}, user: ${userName}`);
+
     // Validate required fields
     if (!userName || !contentRating || !systemDesignRating || !responseQualityRating) {
+      console.log(`[FEEDBACK] Validation failed - missing fields`);
       res.status(400).json({ error: 'All ratings are required' });
       return;
     }
 
     // Validate ratings are 1-5
     if ([contentRating, systemDesignRating, responseQualityRating].some(r => r < 1 || r > 5)) {
+      console.log(`[FEEDBACK] Validation failed - invalid ratings`);
       res.status(400).json({ error: 'Ratings must be between 1 and 5' });
       return;
     }
@@ -33,6 +37,7 @@ router.post('/:code/feedback/submit', async (req: Request, res: Response): Promi
     if (comment && comment.trim()) {
       const wordCount = comment.trim().split(/\s+/).length;
       if (wordCount > 200) {
+        console.log(`[FEEDBACK] Validation failed - comment too long (${wordCount} words)`);
         res.status(400).json({ error: 'Comment must be 200 words or less' });
         return;
       }
@@ -45,11 +50,13 @@ router.post('/:code/feedback/submit', async (req: Request, res: Response): Promi
     );
 
     if (projectResult.rows.length === 0) {
+      console.log(`[FEEDBACK] Project ${code} not found`);
       res.status(404).json({ error: 'Project not found' });
       return;
     }
 
     if (!projectResult.rows[0].enable_feedback) {
+      console.log(`[FEEDBACK] Feedback not enabled for project ${code}`);
       res.status(403).json({ error: 'Feedback is not enabled for this project' });
       return;
     }
@@ -60,6 +67,8 @@ router.post('/:code/feedback/submit', async (req: Request, res: Response): Promi
       .update(`${code}-${userName.trim().toLowerCase()}`)
       .digest('hex');
 
+    console.log(`[FEEDBACK] Checking for duplicate submission (hash: ${submissionHash.substring(0, 8)}...)`);
+
     // Check if already submitted
     const existingResult = await pool.query(
       'SELECT id FROM project_feedback WHERE submission_hash = $1',
@@ -67,9 +76,12 @@ router.post('/:code/feedback/submit', async (req: Request, res: Response): Promi
     );
 
     if (existingResult.rows.length > 0) {
+      console.log(`[FEEDBACK] Duplicate submission detected`);
       res.status(409).json({ error: 'Feedback already submitted for this project' });
       return;
     }
+
+    console.log(`[FEEDBACK] Inserting feedback into database...`);
 
     // Insert feedback
     const result = await pool.query<ProjectFeedback>(
@@ -82,12 +94,14 @@ router.post('/:code/feedback/submit', async (req: Request, res: Response): Promi
       [code, contentRating, systemDesignRating, responseQualityRating, comment || '', submissionHash]
     );
 
+    console.log(`[FEEDBACK] ✅ Success! Feedback ID: ${result.rows[0].id}`);
+
     res.status(201).json({ 
       success: true,
       feedback: result.rows[0]
     });
   } catch (error: any) {
-    console.error('Submit feedback error:', error);
+    console.error('[FEEDBACK] ❌ Error:', error);
     if (error.code === '23505') { // Unique constraint violation
       res.status(409).json({ error: 'Feedback already submitted for this project' });
     } else {
