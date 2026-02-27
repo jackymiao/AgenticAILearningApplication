@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
-// Use same pattern as DefenseModal and AttackModal for consistency
+// Use import.meta for Vite, process.env for tests
 const API_BASE = typeof process !== 'undefined' && process.env.VITE_API_BASE 
   ? process.env.VITE_API_BASE 
-  : '/api';
+  : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE) || '/api';
 
 export default function FeedbackModal({ projectCode, userName, onClose }) {
   const [ratings, setRatings] = useState({

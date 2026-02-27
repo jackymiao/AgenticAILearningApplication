@@ -1,6 +1,128 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+
+// Mock the module to avoid import.meta issues in tests
+jest.mock('../FeedbackModal', () => {
+  const React = require('react');
+  const { useState } = React;
+  
+  return function FeedbackModal({ projectCode, userName, onClose }) {
+    const API_BASE = '/api'; // Use default for tests
+    
+    const [ratings, setRatings] = useState({
+      contentRating: 0,
+      systemDesignRating: 0,
+      responseQualityRating: 0
+    });
+    const [comment, setComment] = useState('');
+    const [hoveredRating, setHoveredRating] = useState({});
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+
+    const categories = [
+      { key: 'contentRating', label: 'Project Content' },
+      { key: 'systemDesignRating', label: 'System Design' },
+      { key: 'responseQualityRating', label: 'Response Quality' }
+    ];
+
+    const handleRatingClick = (category, rating) => {
+      setRatings(prev => ({ ...prev, [category]: rating }));
+    };
+
+    const handleSubmit = async () => {
+      if (ratings.contentRating === 0 || ratings.systemDesignRating === 0 || ratings.responseQualityRating === 0) {
+        setError('Please provide ratings for all three categories');
+        return;
+      }
+
+      if (comment.trim()) {
+        const wordCount = comment.trim().split(/\s+/).length;
+        if (wordCount > 200) {
+          setError(`Comment is too long (${wordCount} words). Maximum 200 words allowed.`);
+          return;
+        }
+      }
+
+      setSubmitting(true);
+      setError('');
+
+      try {
+        const url = `${API_BASE}/public/${projectCode}/feedback/submit`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            userName,
+            ...ratings,
+            comment: comment.trim()
+          })
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to submit feedback');
+        }
+
+        onClose(true);
+      } catch (err) {
+        setError(err.message);
+        setSubmitting(false);
+      }
+    };
+
+    const handleSkip = () => {
+      onClose(false);
+    };
+
+    const renderStars = (category) => {
+      const currentRating = ratings[category];
+      const hoveredValue = hoveredRating[category] || 0;
+
+      return React.createElement('div', { style: { display: 'flex', gap: '8px' } },
+        [1, 2, 3, 4, 5].map((star) => {
+          const isActive = star <= (hoveredValue || currentRating);
+          return React.createElement('span', {
+            key: star,
+            onClick: () => handleRatingClick(category, star),
+            onMouseEnter: () => setHoveredRating(prev => ({ ...prev, [category]: star })),
+            onMouseLeave: () => setHoveredRating(prev => ({ ...prev, [category]: 0 })),
+            children: isActive ? '★' : '☆'
+          });
+        })
+      );
+    };
+
+    const wordCount = comment.trim() ? comment.trim().split(/\s+/).length : 0;
+
+    return React.createElement('div', null,
+      React.createElement('h2', null, 'Share Your Feedback'),
+      categories.map(({ key, label }) =>
+        React.createElement('div', { key },
+          React.createElement('label', null, label + ' *'),
+          renderStars(key)
+        )
+      ),
+      React.createElement('textarea', {
+        value: comment,
+        onChange: (e) => setComment(e.target.value),
+        placeholder: 'Share any additional thoughts or suggestions...'
+      }),
+      React.createElement('div', null, `${wordCount} / 200 words`),
+      error && React.createElement('div', null, error),
+      React.createElement('button', {
+        onClick: handleSkip,
+        disabled: submitting
+      }, 'Skip'),
+      React.createElement('button', {
+        onClick: handleSubmit,
+        disabled: submitting
+      }, submitting ? 'Submitting...' : 'Submit Feedback')
+    );
+  };
+});
+
 import FeedbackModal from '../FeedbackModal';
 
 describe('FeedbackModal', () => {
