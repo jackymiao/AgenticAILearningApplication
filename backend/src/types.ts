@@ -17,6 +17,7 @@ export interface Project {
   attempt_limit_per_category: number;
   review_cooldown_seconds: number;
   enable_feedback: boolean;
+  test_mode: boolean;
   enabled: boolean;
   created_by_admin_id: string | null;
   created_at: Date;

@@ -202,7 +202,6 @@ export default function ProjectPage() {
   // Editor event tracking for time-on-task analytics
   const handleEditorFocus = () => {
     editorFocusTimeRef.current = Date.now();
-    console.log('[EDITOR] 📝 Editor focused');
   };
 
   const handleEditorBlur = async () => {
@@ -224,7 +223,6 @@ export default function ProjectPage() {
           attempt_number: attemptNumberRef.current
         })
       });
-      console.log(`[EDITOR] 📊 Blur: ${focusDuration}ms, ${wordCount} words`);
     } catch (err) {
       console.error('[EDITOR] ❌ Failed to log blur event:', err);
     }
@@ -289,11 +287,7 @@ export default function ProjectPage() {
     setReviewLoading(true);
     
     try {
-      console.log('[FRONTEND] Submitting review...');
       const result = await publicApi.submitReview(code, userName, essay);
-      console.log('[FRONTEND] ✅ Received response:', result);
-      console.log('[FRONTEND] Number of reviews:', result.reviews?.length);
-      console.log('[FRONTEND] Reviews array:', JSON.stringify(result.reviews, null, 2));
       
       // Clear any previous errors on success
       setError('');
@@ -338,26 +332,19 @@ export default function ProjectPage() {
       }
       
       // Reload user state to get updated attempts and history
-      console.log('[FRONTEND] Fetching updated user state...');
       const updatedState = await publicApi.getUserState(code, userName);
-      console.log('[FRONTEND] Updated state:', updatedState);
-      console.log('[FRONTEND] Review history:', JSON.stringify(updatedState?.reviewHistory, null, 2));
       
       const hasHistory = updatedState?.reviewHistory && Object.values(updatedState.reviewHistory).some(list => Array.isArray(list) && list.length > 0);
-      console.log('[FRONTEND] Has history from backend:', hasHistory);
       
       if (!hasHistory && Array.isArray(result.reviews) && result.reviews.length > 0) {
-        console.log('[FRONTEND] Using fallback history from submit response');
         const fallbackHistory = { content: [], structure: [], mechanics: [] };
         result.reviews.forEach((review) => {
           if (fallbackHistory[review.category]) {
             fallbackHistory[review.category].push(review);
           }
         });
-        console.log('[FRONTEND] Fallback history:', JSON.stringify(fallbackHistory, null, 2));
         setUserState({ ...updatedState, reviewHistory: fallbackHistory });
       } else {
-        console.log('[FRONTEND] Using history from backend');
         setUserState(updatedState);
       }
       
@@ -781,14 +768,6 @@ export default function ProjectPage() {
                 
                 <div style={{ padding: '24px' }}>
                   <h3 style={{ marginBottom: '16px' }}>{getCategoryDisplayName(activeTab)} Review</h3>
-
-                  {(() => {
-                    console.log('[FRONTEND RENDER] Active tab:', activeTab);
-                    console.log('[FRONTEND RENDER] userState:', userState);
-                    console.log('[FRONTEND RENDER] reviewHistory for tab:', userState?.reviewHistory?.[activeTab]);
-                    console.log('[FRONTEND RENDER] Has reviews?', userState?.reviewHistory?.[activeTab]?.length > 0);
-                    return null;
-                  })()}
 
                   {userState?.reviewHistory[activeTab]?.length > 0 ? (
                     <div>

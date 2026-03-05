@@ -119,6 +119,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       attemptLimitPerCategory,
       reviewCooldownSeconds,
       enableFeedback,
+      testMode,
       enabled
     } = req.body;
     
@@ -141,9 +142,9 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
     const result = await pool.query<Project>(
       `INSERT INTO projects (
         code, title, description, youtube_url, word_limit, attempt_limit_per_category,
-        review_cooldown_seconds, enable_feedback, enabled, created_by_admin_id
+        review_cooldown_seconds, enable_feedback, test_mode, enabled, created_by_admin_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         codeNorm,
@@ -154,6 +155,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
         Number(attemptLimitPerCategory) || 3,
         Number(reviewCooldownSeconds) || 120,
         enableFeedback === true || enableFeedback === 'true',
+        testMode === true || testMode === 'true',
         enabled !== false && enabled !== 'false',
         req.session.adminId
       ]
@@ -187,7 +189,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
       wordLimit,
       attemptLimitPerCategory,
       reviewCooldownSeconds,
-      enableFeedback
+      enableFeedback,
+      testMode
     } = req.body;
     
     const result = await pool.query<Project>(
@@ -199,6 +202,7 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
            attempt_limit_per_category = $6,
            review_cooldown_seconds = $7,
            enable_feedback = $8,
+           test_mode = $9,
            updated_at = NOW()
        WHERE code = $1
        RETURNING *`,
@@ -210,7 +214,8 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
         wordLimit,
         attemptLimitPerCategory,
         reviewCooldownSeconds,
-        enableFeedback === true || enableFeedback === 'true'
+        enableFeedback === true || enableFeedback === 'true',
+        testMode === true || testMode === 'true'
       ]
     );
     

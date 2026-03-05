@@ -34,7 +34,8 @@ export default function EditProject() {
         wordLimit: data.word_limit,
         attemptLimitPerCategory: data.attempt_limit_per_category,
         reviewCooldownSeconds: data.review_cooldown_seconds || 120,
-        enableFeedback: data.enable_feedback || false
+        enableFeedback: data.enable_feedback || false,
+        testMode: data.test_mode || false
       });
       setLoading(false);
     } catch (err) {
@@ -267,6 +268,24 @@ export default function EditProject() {
                   <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Enable Feedback</div>
                   <div style={{ fontSize: '12px', color: '#666' }}>
                     Collect anonymous feedback from students after final submission
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff3cd', borderRadius: '6px', border: '1px solid #ffc107' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  name="testMode"
+                  checked={formData.testMode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, testMode: e.target.checked }))}
+                  style={{ width: '20px', height: '20px', marginRight: '12px', cursor: 'pointer' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>🧪 Test Mode</div>
+                  <div style={{ fontSize: '12px', color: '#856404' }}>
+                    Skip AI content detection for testing purposes (allows AI-generated essays)
                   </div>
                 </div>
               </label>
