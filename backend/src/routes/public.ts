@@ -340,10 +340,9 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     } else {
       try {
         sdkResult = await runWorkflow({ input_as_text: sdkInput });
-        if (process.env.DEBUG === '1') {
-          console.log('[REVIEW] final_score:', sdkResult?.final_score);
-          console.log('[REVIEW] Full SDK Result:', JSON.stringify(sdkResult, null, 2));
-        }
+        console.log('[REVIEW] ✅ SDK returned result');
+        console.log('[REVIEW] final_score:', sdkResult?.final_score);
+        console.log('[REVIEW] Full SDK Result:', JSON.stringify(sdkResult, null, 2));
       } catch (error) {
         console.error('[REVIEW] Error calling SDK:', error);
         res.status(500).json({ 
@@ -394,11 +393,15 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     // First pass: extract all category scores
     for (const category of categories) {
       let categoryData = sdkResult.details[category];
+      console.log(`[REVIEW] Processing category: ${category}`);
+      console.log(`[REVIEW] Category data type:`, typeof categoryData);
+      console.log(`[REVIEW] Category data:`, JSON.stringify(categoryData, null, 2));
 
       // If category data is a JSON string, parse it
       if (typeof categoryData === 'string') {
         try {
           categoryData = JSON.parse(categoryData);
+          console.log(`[REVIEW] Parsed ${category} data:`, JSON.stringify(categoryData, null, 2));
         } catch (parseError) {
           console.error(`[REVIEW] Failed to parse ${category} details JSON:`, parseError);
           categoryData = null;
@@ -406,11 +409,12 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       }
       
       if (!categoryData) {
-        console.error(`[REVIEW] Missing category data for: ${category}`);
+        console.error(`[REVIEW] ❌ Missing category data for: ${category}`);
         console.error(`[REVIEW] Available keys:`, Object.keys(sdkResult.details));
         continue;
       }
 
+      console.log(`[REVIEW] ${category} score:`, categoryData.score);
       categoryScores[category] = categoryData.score || 0;
     }
 
@@ -504,13 +508,19 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     
     const updatedTokens = updatedPlayerResult.rows[0];
     
-    res.json({
+    const responseData = {
       reviews: savedAttempts,
       finalScore: calculatedFinalScore,
       attemptsRemaining: updatedTokens.review_tokens,
       tokens: updatedTokens,
       cooldownMs: (project.review_cooldown_seconds || 120) * 1000
-    });
+    };
+    
+    console.log('[REVIEW] ✅ Sending response to frontend:');
+    console.log('[REVIEW] Number of reviews:', savedAttempts.length);
+    console.log('[REVIEW] Response:', JSON.stringify(responseData, null, 2));
+    
+    res.json(responseData);
     
   } catch (error) {
     console.error('Review submission error:', error);
