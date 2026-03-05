@@ -43,57 +43,95 @@ WHERE project_code = $1 AND user_name_norm = $2;
 
 **Requirement**: Focused time when text box is toggled (open/close events)
 
-### Current Coverage ❌ NOT TRACKED
+### Current Coverage ✅ IMPLEMENTED
 
-- **Missing Table**: No table currently tracks editor/text box focus events
+- **Table**: `editor_sessions`
+  - `id` - UUID primary key for each event
+  - `project_code` - which project this belongs to
+  - `user_name_norm` - normalized student name
+  - `session_id` - session identifier
+  - `event_type` - 'focus' or 'blur' event
+  - `timestamp` - TIMESTAMPTZ when event occurred
+  - `duration_ms` - how long the session lasted (for blur events)
+  - `essay_length` - word count at time of event
+  - `current_attempt_number` - which attempt number
+  - `created_at` - record timestamp
+  - Indexes on (project_code, user_name_norm), (created_at DESC), (event_type)
 
-### What's Needed
+### Backend Integration ✅ IMPLEMENTED
 
-Create new table to track text box interactions:
+- **Endpoint**: `POST /projects/:code/editor-events`
+- **Location**: `src/routes/public.ts`
+- **Logs**: `[EDITOR]` prefixed console messages
+- **Features**:
+  - Accepts focus/blur events from frontend
+  - Calculates and stores duration_ms
+  - Stores word count and attempt context
+  - Non-blocking, async storage
+
+### Frontend Integration ✅ IMPLEMENTED
+
+- **Component**: `src/pages/ProjectPage.jsx`
+- **Handlers**:
+  - `onFocus` - captures editor focus timestamp
+  - `onBlur` - calculates duration and sends to backend
+  - Tracks essay word count with each event
+- **Data Sent**:
+  ```json
+  {
+    "userName": "student_name",
+    "eventType": "blur",
+    "duration_ms": 45000,
+    "essay_length": 250,
+    "attempt_number": 1
+  }
+  ```
+
+### Data Queries
 
 ```sql
-CREATE TABLE IF NOT EXISTS editor_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_code CHAR(6) NOT NULL REFERENCES projects(code) ON DELETE CASCADE,
-  user_name_norm TEXT NOT NULL,
+-- Timeline of all editor focus/blur events for a student
+SELECT
+  event_type,
+  timestamp,
+  duration_ms,
+  essay_length,
+  current_attempt_number
+FROM editor_sessions
+WHERE project_code = $1 AND user_name_norm = $2
+ORDER BY timestamp;
 
-  -- Session identification
-  session_id TEXT NOT NULL,
+-- Calculate total time on task per attempt
+SELECT
+  current_attempt_number,
+  SUM(duration_ms) as total_focus_time_ms,
+  COUNT(*) as focus_sessions,
+  AVG(duration_ms) as avg_session_duration_ms
+FROM editor_sessions
+WHERE project_code = $1 AND user_name_norm = $2 AND event_type = 'blur'
+GROUP BY current_attempt_number;
 
-  -- Event tracking
-  event_type TEXT NOT NULL CHECK (event_type IN ('focus', 'blur')),
-  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  -- Optional: duration if we calculate on client
-  duration_ms INTEGER,
-
-  -- Context
-  essay_length INTEGER, -- word count at time of event
-  current_attempt_number INTEGER,
-
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  CONSTRAINT unique_event UNIQUE (session_id, timestamp)
-);
-
-CREATE INDEX idx_editor_sessions_lookup ON editor_sessions(project_code, user_name_norm);
-CREATE INDEX idx_editor_sessions_timestamp ON editor_sessions(created_at DESC);
-CREATE INDEX idx_editor_sessions_event ON editor_sessions(event_type);
+-- Time on task by student (summary)
+SELECT
+  user_name_norm,
+  COUNT(CASE WHEN event_type = 'blur' THEN 1 END) as total_focus_sessions,
+  SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END) as total_time_ms,
+  ROUND(SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END) / 1000.0 / 60, 2) as total_time_minutes
+FROM editor_sessions
+WHERE project_code = $1
+GROUP BY user_name_norm
+ORDER BY total_time_ms DESC;
 ```
 
-### Frontend Integration Needed
+### Migration Info
 
-```javascript
-// In text editor component:
-- Listen for onFocus event → send 'focus' event to backend
-- Listen for onBlur event → send 'blur' event to backend
-- Include timestamp, essay length, attempt number in each event
+- **File**: `src/db/migrate-editor-sessions.ts`
+- **Status**: ✅ Executed successfully
+- **Timestamp**: March 5, 2026
+- **Tables Created**: 1 (editor_sessions)
+- **Indexes Created**: 3
 
-// Calculate total focused time:
-Total = sum of (blur_timestamp - focus_timestamp) for all focus/blur pairs
-```
-
-### Status: ❌ MISSING - Needs table creation + frontend integration
+### Status: ✅ COMPLETE - Fully implemented and deployed
 
 ---
 
@@ -217,18 +255,49 @@ ORDER BY event_time;
 
 ## Summary Table
 
-| Data Type          | Status     | Current Table(s)                 | Key Fields                                                                | Action Required                                       |
-| ------------------ | ---------- | -------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Draft Snapshot** | ✅ Ready   | `review_attempts`, `submissions` | `essay_snapshot`, `essay`, `attempt_number`, `created_at`, `submitted_at` | None                                                  |
-| **Time on Task**   | ❌ Missing | None                             | N/A                                                                       | Create `editor_sessions` table + frontend integration |
-| **Game Event**     | ✅ Ready   | `attacks`                        | `created_at`, `responded_at`, `shield_used`, `status`                     | None                                                  |
-| **Task Event**     | ✅ Ready   | `review_attempts`, `submissions` | `created_at`, `attempt_number`, `status`, `score`, `submitted_at`         | None                                                  |
+| Data Type          | Status      | Current Table(s)                 | Key Fields                                                                         | Action Required |
+| ------------------ | ----------- | -------------------------------- | ---------------------------------------------------------------------------------- | --------------- |
+| **Draft Snapshot** | ✅ Complete | `review_attempts`, `submissions` | `essay_snapshot`, `essay`, `attempt_number`, `created_at`, `submitted_at`          | None            |
+| **Time on Task**   | ✅ Complete | `editor_sessions`                | `event_type`, `duration_ms`, `essay_length`, `current_attempt_number`, `timestamp` | None            |
+| **Game Event**     | ✅ Complete | `attacks`                        | `created_at`, `responded_at`, `shield_used`, `status`                              | None            |
+| **Task Event**     | ✅ Complete | `review_attempts`, `submissions` | `created_at`, `attempt_number`, `status`, `score`, `submitted_at`                  | None            |
 
 ---
 
-## Immediate Actions Required
+## Implementation Summary
 
-### 1. Time on Task Tracking (Only Missing Component)
+✅ **ALL DATA COLLECTION REQUIREMENTS COMPLETED**
+
+All four data types are now fully tracked and queryable:
+
+1. **Draft Snapshot** - Essays captured at each AI submission attempt
+2. **Time on Task** - Focus/blur events tracked with duration calculations
+3. **Game Event** - Steal attempts, shield usage, and outcomes timestamped
+4. **Task Event** - AI passes and final submission timestamps recorded
+
+### Database Tables
+
+- `review_attempts` - Draft snapshots + task events
+- `editor_sessions` - Time on task data (NEW - March 5, 2026)
+- `attacks` - Game events
+- `submissions` - Final submissions + task events
+
+### Backend Endpoints
+
+- `POST /projects/:code/reviews` - Submit essay reviews (captures draft snapshots & game events)
+- `POST /projects/:code/editor-events` - Log editor focus/blur events (NEW - March 5, 2026)
+- `POST /projects/:code/steals` - Submit steal attempts (captures game events)
+- `POST /projects/:code/shields` - Use shields (captures game events)
+
+### Frontend Components
+
+- `ProjectPage.jsx` - Captures all events and sends to backend
+
+---
+
+## Immediate Actions Completed
+
+### ✅ Time on Task Tracking (COMPLETED March 5, 2026)
 
 #### Backend: Create Migration File
 
@@ -278,99 +347,63 @@ async function migrate() {
 migrate();
 ```
 
-#### Backend: Create Route to Log Editor Events
+#### Implementation Files (Completed)
 
-File: `/backend/src/routes/public.ts` (add new endpoint)
+**Database**:
 
-```typescript
-// POST /projects/:code/editor-events
-// Track when student opens/closes text editor
-router.post("/projects/:code/editor-events", async (req, res) => {
-  const {code} = req.params;
-  const {userName, eventType, duration_ms, essay_length, attempt_number} =
-    req.body;
+- ✅ Created: `backend/src/db/migrate-editor-sessions.ts`
+- ✅ Executed: March 5, 2026
+- ✅ Table: `editor_sessions` created with 3 indexes
 
-  if (!userName || !eventType) {
-    return res.status(400).json({error: "userName and eventType required"});
-  }
+**Backend**:
 
-  try {
-    await pool.query(
-      `INSERT INTO editor_sessions 
-       (project_code, user_name_norm, session_id, event_type, duration_ms, 
-        essay_length, current_attempt_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        code,
-        userName.toLowerCase(),
-        req.sessionID,
-        eventType,
-        duration_ms,
-        essay_length,
-        attempt_number,
-      ],
-    );
+- ✅ Updated: `backend/src/routes/public.ts`
+- ✅ Endpoint: `POST /projects/:code/editor-events`
+- ✅ Logging: `[EDITOR]` prefixed console output
 
-    res.json({success: true});
-  } catch (error) {
-    console.error("Error logging editor event:", error);
-    res.status(500).json({error: "Failed to log event"});
-  }
-});
-```
+**Frontend**:
 
-#### Frontend: Track Text Box Focus/Blur
-
-In your essay editor component:
-
-```javascript
-const handleEditorFocus = () => {
-  sessionStorage.setItem("editorFocusTime", Date.now());
-};
-
-const handleEditorBlur = async () => {
-  const focusTime = sessionStorage.getItem("editorFocusTime");
-  if (!focusTime) return;
-
-  const duration = Date.now() - parseInt(focusTime);
-  const wordCount = editorText.split(/\s+/).length;
-
-  await fetch(`/projects/${projectCode}/editor-events`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      userName,
-      eventType: "blur",
-      duration_ms: duration,
-      essay_length: wordCount,
-      attempt_number: currentAttempt,
-    }),
-  });
-};
-
-// In your textarea/contentEditable element:
-<textarea
-  onFocus={handleEditorFocus}
-  onBlur={handleEditorBlur}
-  // ...other props
-/>;
-```
+- ✅ Updated: `frontend/src/pages/ProjectPage.jsx`
+- ✅ Import: Added `useRef` from React
+- ✅ Handlers: `handleEditorFocus()` and `handleEditorBlur()`
+- ✅ Events: Attached to textarea element
 
 ---
 
 ## Data Export Queries
 
-Once all tables are in place, use these queries for analysis:
+Use these queries for analysis:
 
 ```sql
--- Complete student activity timeline
+-- Total time on task per student (in minutes)
+SELECT
+  user_name_norm,
+  ROUND(SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END) / 1000.0 / 60, 2) as total_time_minutes,
+  COUNT(CASE WHEN event_type = 'blur' THEN 1 END) as focus_sessions
+FROM editor_sessions
+WHERE project_code = $1
+GROUP BY user_name_norm
+ORDER BY total_time_minutes DESC;
+
+-- Time on task by attempt
+SELECT
+  user_name_norm,
+  current_attempt_number,
+  ROUND(SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END) / 1000.0 / 60, 2) as time_minutes,
+  MAX(essay_length) as final_essay_length
+FROM editor_sessions
+WHERE project_code = $1 AND event_type = 'blur'
+GROUP BY user_name_norm, current_attempt_number
+ORDER BY user_name_norm, current_attempt_number;
+
+-- Complete student activity timeline (all data types)
 SELECT
   'draft_snapshot' as event_type,
   ra.created_at as timestamp,
   ra.user_name_norm,
   ra.attempt_number,
   ra.category,
-  LENGTH(ra.essay_snapshot) as draft_length,
+  LENGTH(ra.essay_snapshot) as data_size,
   ra.status
 FROM review_attempts ra
 WHERE ra.project_code = $1
@@ -383,8 +416,8 @@ SELECT
   es.user_name_norm,
   es.current_attempt_number,
   es.event_type as category,
-  es.duration_ms,
-  NULL
+  es.duration_ms as data_size,
+  NULL as status
 FROM editor_sessions es
 WHERE es.project_code = $1
 
@@ -396,7 +429,7 @@ SELECT
   a.attacker_name_norm as user_name_norm,
   NULL,
   CASE WHEN a.shield_used THEN 'shield' ELSE 'steal' END,
-  NULL,
+  1,
   a.status
 FROM attacks a
 WHERE a.project_code = $1
@@ -409,7 +442,7 @@ SELECT
   s.user_name_norm,
   NULL,
   'submission',
-  LENGTH(s.essay),
+  LENGTH(s.essay) as data_size,
   NULL
 FROM submissions s
 WHERE s.project_code = $1
@@ -421,7 +454,18 @@ ORDER BY timestamp, user_name_norm;
 
 ## Summary
 
-✅ **3 out of 4 data types are ready** - No schema changes needed
-❌ **1 data type needs implementation** - Time on Task requires new table + frontend integration
+✅ **ALL 4 DATA COLLECTION TYPES FULLY IMPLEMENTED AND DEPLOYED**
+
+- **Draft Snapshot**: ✅ Complete - Essays captured at each attempt
+- **Time on Task**: ✅ Complete - Focus/blur times tracked with durations
+- **Game Event**: ✅ Complete - Steal/shield events timestamped
+- **Task Event**: ✅ Complete - AI passes and submissions recorded
+
+**Commit**: `3055851` - "feat: Add time-on-task tracking with editor session analytics"
+**Deployed**: March 5, 2026
+**Status**: Production Ready ✅
+
+```
 
 The existing schema captures draft snapshots, game events, and task events perfectly. You only need to add the `editor_sessions` table and client-side event tracking for complete time-on-task analytics.
+```
