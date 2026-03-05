@@ -659,4 +659,34 @@ router.get('/projects/:code/leaderboard', async (req: Request, res: Response): P
   }
 });
 
+// Track editor focus/blur events for time-on-task analytics
+router.post('/projects/:code/editor-events', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { code } = req.params;
+    const { userName, eventType, duration_ms, essay_length, attempt_number } = req.body;
+    
+    if (!userName || !eventType) {
+      res.status(400).json({ error: 'userName and eventType required' });
+      return;
+    }
+    
+    const userNameNorm = normalizeUserName(userName);
+    const sessionId = (req as any).sessionID || `session-${Date.now()}`;
+    
+    console.log(`[EDITOR] 📝 Event: ${eventType} for ${code}/${userNameNorm} (duration: ${duration_ms}ms)`);
+    
+    await pool.query(
+      `INSERT INTO editor_sessions 
+       (project_code, user_name_norm, session_id, event_type, duration_ms, essay_length, current_attempt_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [code, userNameNorm, sessionId, eventType, duration_ms, essay_length, attempt_number]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[EDITOR] ❌ Error logging editor event:', error);
+    res.status(500).json({ error: 'Failed to log editor event' });
+  }
+});
+
 export default router;

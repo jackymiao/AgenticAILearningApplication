@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import Leaderboard from '../components/Leaderboard';
@@ -39,6 +39,10 @@ export default function ProjectPage() {
   
   // Feedback state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Editor tracking state
+  const editorFocusTimeRef = useRef(null);
+  const attemptNumberRef = useRef(0);
 
   // Load saved student name/id and essay from localStorage on mount
   useEffect(() => {
@@ -194,6 +198,39 @@ export default function ProjectPage() {
       alert('🛡️ ' + result.message);
     }
   }, [initializePlayer]);
+
+  // Editor event tracking for time-on-task analytics
+  const handleEditorFocus = () => {
+    editorFocusTimeRef.current = Date.now();
+    console.log('[EDITOR] 📝 Editor focused');
+  };
+
+  const handleEditorBlur = async () => {
+    if (!editorFocusTimeRef.current || !userNameSubmitted) return;
+
+    const focusDuration = Date.now() - editorFocusTimeRef.current;
+    const wordCount = essay.split(/\s+/).filter(w => w.length > 0).length;
+    
+    try {
+      await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}/projects/${code}/editor-events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          userName,
+          eventType: 'blur',
+          duration_ms: focusDuration,
+          essay_length: wordCount,
+          attempt_number: attemptNumberRef.current
+        })
+      });
+      console.log(`[EDITOR] 📊 Blur: ${focusDuration}ms, ${wordCount} words`);
+    } catch (err) {
+      console.error('[EDITOR] ❌ Failed to log blur event:', err);
+    }
+    
+    editorFocusTimeRef.current = null;
+  };
 
   // WebSocket connection for real-time game events
   useWebSocket(
@@ -565,6 +602,8 @@ export default function ProjectPage() {
                 <textarea
                   value={essay}
                   onChange={(e) => setEssay(e.target.value)}
+                  onFocus={handleEditorFocus}
+                  onBlur={handleEditorBlur}
                   placeholder="Write your essay here..."
                   disabled={userState?.alreadySubmitted}
                   style={{ 
