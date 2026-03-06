@@ -556,7 +556,7 @@ export default function ProjectPage() {
             <h1 style={{ marginBottom: '12px' }}>{project.title}</h1>
             <div 
               style={{ color: '#666', marginBottom: '16px' }}
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(project.description, { ALLOW_DATA_ATTR: false, ALLOWED_TAGS: ['b', 'i', 'u', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'div', 'span'], ALLOWED_ATTR: ['href', 'style', 'src'] }) }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(project.description, { ALLOW_DATA_ATTR: false, ALLOWED_TAGS: ['b', 'i', 'u', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'div', 'span'], ALLOWED_ATTR: ['href', 'style', 'src', 'class'] }) }}
             />
             <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#666' }}>
               <div>Word Limit: <strong>{project.word_limit}</strong></div>
