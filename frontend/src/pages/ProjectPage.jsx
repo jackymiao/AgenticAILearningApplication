@@ -81,6 +81,20 @@ export default function ProjectPage() {
     loadProject();
   }, [code]);
 
+  // Add CSS to constrain images in description
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .project-description img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   const loadUserStateWithName = async (name) => {
     try {
       const data = await publicApi.getUserState(code, name);
@@ -555,7 +569,15 @@ export default function ProjectPage() {
             </div>
             <h1 style={{ marginBottom: '12px' }}>{project.title}</h1>
             <div 
-              style={{ color: '#666', marginBottom: '16px' }}
+              className="project-description"
+              style={{ 
+                color: '#666', 
+                marginBottom: '16px',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                maxWidth: '100%',
+                overflow: 'hidden'
+              }}
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(project.description, { ALLOW_DATA_ATTR: false, ALLOWED_TAGS: ['b', 'i', 'u', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'div', 'span'], ALLOWED_ATTR: ['href', 'style', 'src', 'class'] }) }}
             />
             <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#666' }}>
