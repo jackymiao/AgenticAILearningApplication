@@ -104,6 +104,12 @@ export default function ProjectPage() {
       .project-description li {
         display: list-item !important;
       }
+      .project-description ul > li {
+        list-style-type: disc !important;
+      }
+      .project-description ol > li {
+        list-style-type: decimal !important;
+      }
       /* Allow text-align: center to work on parent elements */
       .project-description .ql-align-center {
         text-align: center;
