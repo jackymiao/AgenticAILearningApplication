@@ -88,7 +88,17 @@ export default function ProjectPage() {
       .project-description img {
         max-width: 100% !important;
         height: auto !important;
-        display: block;
+        display: inline-block;
+      }
+      /* Allow text-align: center to work on parent elements */
+      .project-description .ql-align-center {
+        text-align: center;
+      }
+      .project-description .ql-align-right {
+        text-align: right;
+      }
+      .project-description .ql-align-left {
+        text-align: left;
       }
     `;
     document.head.appendChild(style);
