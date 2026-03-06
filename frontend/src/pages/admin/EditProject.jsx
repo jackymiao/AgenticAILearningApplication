@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageContainer from '../../components/PageContainer';
+import RichTextEditor from '../../components/RichTextEditor';
 import { adminApi } from '../../api/endpoints';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -191,13 +192,14 @@ export default function EditProject() {
 
             <div style={{ marginBottom: '20px' }}>
               <label>Description *</label>
-              <textarea
-                name="description"
+              <RichTextEditor
                 value={formData.description}
-                onChange={handleChange}
-                rows={4}
-                required
+                onChange={(content) => setFormData(prev => ({ ...prev, description: content }))}
+                placeholder="Enter project description..."
               />
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                Formatted text will be displayed to students on the project page
+              </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

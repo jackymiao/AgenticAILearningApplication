@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import PageContainer from '../components/PageContainer';
 import Leaderboard from '../components/Leaderboard';
 import ReviewLoadingAnimation from '../components/ReviewLoadingAnimation';
@@ -552,7 +553,10 @@ export default function ProjectPage() {
               Project Code: <strong>{code}</strong>
             </div>
             <h1 style={{ marginBottom: '12px' }}>{project.title}</h1>
-            <p style={{ color: '#666', marginBottom: '16px' }}>{project.description}</p>
+            <div 
+              style={{ color: '#666', marginBottom: '16px' }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(project.description, { ALLOW_DATA_ATTR: false, ALLOWED_TAGS: ['b', 'i', 'u', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'div', 'span'], ALLOWED_ATTR: ['href', 'style', 'src'] }) }}
+            />
             <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#666' }}>
               <div>Word Limit: <strong>{project.word_limit}</strong></div>
               <div>Review Attempts Allowed: <strong>{project.attempt_limit_per_category}</strong></div>
