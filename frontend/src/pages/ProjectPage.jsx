@@ -81,7 +81,7 @@ export default function ProjectPage() {
     loadProject();
   }, [code]);
 
-  // Add CSS to constrain images in description
+  // Add CSS to constrain images and ensure proper list/alignment display
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -89,6 +89,16 @@ export default function ProjectPage() {
         max-width: 100% !important;
         height: auto !important;
         display: inline-block;
+      }
+      /* Ensure list bullets and numbers display */
+      .project-description ul {
+        list-style-type: disc !important;
+      }
+      .project-description ol {
+        list-style-type: decimal !important;
+      }
+      .project-description li {
+        display: list-item !important;
       }
       /* Allow text-align: center to work on parent elements */
       .project-description .ql-align-center {
