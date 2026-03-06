@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import DOMPurify from 'dompurify';
+import 'react-quill-new/dist/quill.snow.css';
 import PageContainer from '../components/PageContainer';
 import Leaderboard from '../components/Leaderboard';
 import ReviewLoadingAnimation from '../components/ReviewLoadingAnimation';
