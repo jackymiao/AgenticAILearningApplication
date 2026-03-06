@@ -5,7 +5,6 @@ import { publicApi } from '../api/endpoints';
 
 export default function HomePage() {
   const [code, setCode] = useState('');
-  const [studentId, setStudentId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -23,21 +22,12 @@ export default function HomePage() {
       return;
     }
 
-    const studentIdTrimmed = studentId.trim();
-    if (!studentIdTrimmed) {
-      setError('Student ID is required');
-      setLoading(false);
-      return;
-    }
-
     try {
       const projectCode = trimmed.toUpperCase();
-      const result = await publicApi.validateStudent(projectCode, studentIdTrimmed);
-      localStorage.setItem(`project_${projectCode}_studentId`, result.studentId);
-      localStorage.setItem(`project_${projectCode}_studentName`, result.studentName);
+      await publicApi.getProject(projectCode);
       navigate(`/projects/${projectCode}`);
     } catch (err) {
-      setError(err.message || 'Failed to validate student ID');
+      setError(err.message || 'Failed to validate project code');
     } finally {
       setLoading(false);
     }
@@ -48,7 +38,7 @@ export default function HomePage() {
       <div style={{ maxWidth: '500px', margin: '80px auto', textAlign: 'center' }}>
         <h1 style={{ marginBottom: '16px' }}>Welcome to Agentic AI Learning</h1>
         <p style={{ marginBottom: '32px', color: '#666' }}>
-          Enter your 6-character project code and student ID to get started
+          Enter your 6-character project code to get started
         </p>
         
         <form onSubmit={handleSubmit}>
@@ -62,19 +52,6 @@ export default function HomePage() {
               textAlign: 'center', 
               fontSize: '20px', 
               letterSpacing: '2px',
-              textTransform: 'uppercase',
-              marginBottom: '16px'
-            }}
-          />
-          <input
-            type="text"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value.toUpperCase())}
-            placeholder="Enter student ID"
-            style={{ 
-              textAlign: 'center', 
-              fontSize: '18px', 
-              letterSpacing: '1px',
               textTransform: 'uppercase',
               marginBottom: '16px'
             }}

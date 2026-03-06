@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS projects (
   code CHAR(6) PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
+  project_password_hash TEXT,
   youtube_url TEXT,
   word_limit INTEGER NOT NULL DEFAULT 150,
   attempt_limit_per_category INTEGER NOT NULL DEFAULT 3,
@@ -145,3 +146,4 @@ CREATE INDEX IF NOT EXISTS idx_attacks_pending ON attacks(status, expires_at);
 CREATE INDEX IF NOT EXISTS idx_project_students_project ON project_students(project_code);
 
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS project_password_hash TEXT;

@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import { decryptPassword } from '../utils/crypto.js';
 import pool, { normalizeProjectCode, normalizeUserName, normalizeStudentId } from '../db/index.js';
 import { runWorkflow } from '../sdk/reviewSdk.js';
 import { detectAIContent, storeDetectionResult } from '../services/aiDetection.js';
@@ -56,10 +57,10 @@ router.get('/projects/:code', async (req: Request, res: Response): Promise<void>
 router.post('/projects/:code/validate-student', async (req: Request, res: Response): Promise<void> => {
   try {
     const code = normalizeProjectCode(req.params.code);
-    const { studentId } = req.body;
+    const { studentId, projectPassword } = req.body;
 
-    if (!studentId) {
-      res.status(400).json({ error: 'studentId is required' });
+    if (!studentId || !projectPassword) {
+      res.status(400).json({ error: 'studentId and projectPassword are required' });
       return;
     }
 
@@ -67,6 +68,25 @@ router.post('/projects/:code/validate-student', async (req: Request, res: Respon
     if (!enabled) return;
 
     const studentIdNorm = normalizeStudentId(studentId);
+
+    const projectResult = await pool.query<Pick<Project, 'project_password_hash'>>(
+      `SELECT project_password_hash
+       FROM projects
+       WHERE code = $1`,
+      [code]
+    );
+
+    const storedHash = projectResult.rows[0]?.project_password_hash || null;
+    if (!storedHash) {
+      res.status(403).json({ error: 'Project password is not configured yet. Please contact your instructor.' });
+      return;
+    }
+
+    const decryptedPassword = decryptPassword(storedHash);
+    if (String(projectPassword) !== decryptedPassword) {
+      res.status(401).json({ error: 'Invalid project password' });
+      return;
+    }
 
     const result = await pool.query(
       `SELECT student_name, student_id

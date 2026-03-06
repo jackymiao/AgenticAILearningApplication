@@ -12,6 +12,8 @@ export interface Project {
   code: string;
   title: string;
   description: string;
+  project_password_hash: string | null;
+  project_password?: string; // Decrypted password (only included for admin GET requests)
   youtube_url: string | null;
   word_limit: number;
   attempt_limit_per_category: number;

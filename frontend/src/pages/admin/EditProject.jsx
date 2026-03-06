@@ -16,6 +16,7 @@ export default function EditProject() {
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [studentsError, setStudentsError] = useState('');
   const [importing, setImporting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState(null);
 
@@ -30,6 +31,7 @@ export default function EditProject() {
       setFormData({
         title: data.title,
         description: data.description,
+        projectPassword: data.project_password || '',
         youtubeUrl: data.youtube_url || '',
         wordLimit: data.word_limit,
         attemptLimitPerCategory: data.attempt_limit_per_category,
@@ -196,6 +198,42 @@ export default function EditProject() {
                 rows={4}
                 required
               />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label>Project Password *</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="projectPassword"
+                  value={formData.projectPassword}
+                  onChange={handleChange}
+                  required
+                  style={{ flex: 1, paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    color: '#0066cc',
+                    fontWeight: '500',
+                    textDecoration: 'underline'
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                Students use this password with student ID to access writing tools.
+              </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

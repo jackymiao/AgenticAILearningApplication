@@ -1,5 +1,6 @@
 import request from 'supertest';
 import express from 'express';
+import { encryptPassword } from '../../utils/crypto.js';
 import publicRouter from '../public.js';
 import pool from '../../db/index.js';
 
@@ -24,19 +25,21 @@ describe('Error Handling & Responses', () => {
     );
 
     // Create enabled test project
+    const enabledProjectPasswordHash = encryptPassword('PASS123');
     await pool.query(
-      `INSERT INTO projects (code, title, description, enabled, created_by_admin_id)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (code) DO UPDATE SET enabled = $4`,
-      [testProjectCode, 'Error Test', 'Test', true, testAdminId]
+      `INSERT INTO projects (code, title, description, enabled, project_password_hash, created_by_admin_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (code) DO UPDATE SET enabled = $4, project_password_hash = $5`,
+      [testProjectCode, 'Error Test', 'Test', true, enabledProjectPasswordHash, testAdminId]
     );
 
     // Create disabled test project
+    const disabledProjectPasswordHash = encryptPassword('PASS123');
     await pool.query(
-      `INSERT INTO projects (code, title, description, enabled, created_by_admin_id)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (code) DO UPDATE SET enabled = $4`,
-      ['DSB001', 'Disabled Test', 'Test', false, testAdminId]
+      `INSERT INTO projects (code, title, description, enabled, project_password_hash, created_by_admin_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (code) DO UPDATE SET enabled = $4, project_password_hash = $5`,
+      ['DSB001', 'Disabled Test', 'Test', false, disabledProjectPasswordHash, testAdminId]
     );
 
     // Create test student
@@ -94,7 +97,7 @@ describe('Error Handling & Responses', () => {
     it('should handle GET /public/projects/:code/validate-student', async () => {
       const response = await request(app)
         .post(`/public/projects/${testProjectCode}/validate-student`)
-        .send({ studentId: 'errstudent' });
+        .send({ studentId: 'errstudent', projectPassword: 'PASS123' });
 
       expect([200, 400, 404]).toContain(response.status);
     });

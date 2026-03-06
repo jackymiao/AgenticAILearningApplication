@@ -14,6 +14,7 @@ export default function CreateProject() {
     code: '',
     title: '',
     description: 'Please review the video and submit your essay below. Make sure to stay within the word limit and use the AI review features to improve your work before final submission.',
+    projectPassword: '',
     youtubeUrl: '',
     wordLimit: 150,
     attemptLimitPerCategory: 3,
@@ -100,6 +101,20 @@ export default function CreateProject() {
                 rows={4}
                 required
               />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label>Project Password *</label>
+              <input
+                type="password"
+                name="projectPassword"
+                value={formData.projectPassword}
+                onChange={handleChange}
+                required
+              />
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                Students must enter this password with their student ID on the project page.
+              </div>
             </div>
 
             <div style={{ marginBottom: '20px' }}>

@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { encryptPassword, decryptPassword } from '../utils/crypto.js';
 import pool, { normalizeProjectCode, normalizeStudentId, normalizeUserName } from '../db/index.js';
 import { requireAdmin } from '../middleware/auth.js';
 import type { Project, Submission, ReviewAttempt, ReviewCategory, ProjectFeedback, ProjectStudent } from '../types.js';
@@ -100,7 +101,13 @@ router.get('/projects/:code', async (req: Request, res: Response): Promise<void>
       return;
     }
     
-    res.json(result.rows[0]);
+    // Decrypt password for admin viewing/editing
+    const project = result.rows[0];
+    if (project.project_password_hash) {
+      project.project_password = decryptPassword(project.project_password_hash);
+    }
+    
+    res.json(project);
   } catch (error) {
     console.error('Get project error:', error);
     res.status(500).json({ error: 'Failed to fetch project' });
@@ -114,6 +121,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
       code,
       title,
       description,
+      projectPassword,
       youtubeUrl,
       wordLimit,
       attemptLimitPerCategory,
@@ -124,7 +132,7 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
     } = req.body;
     
     // Validate required fields
-    if (!code || !title || !description) {
+    if (!code || !title || !description || !projectPassword) {
       console.error('[CREATE PROJECT] Missing required fields');
       res.status(400).json({ error: 'Missing required fields' });
       return;
@@ -138,18 +146,20 @@ router.post('/projects', async (req: Request, res: Response): Promise<void> => {
     }
     
     const codeNorm = normalizeProjectCode(code);
+    const projectPasswordHash = encryptPassword(String(projectPassword));
     
     const result = await pool.query<Project>(
       `INSERT INTO projects (
-        code, title, description, youtube_url, word_limit, attempt_limit_per_category,
+        code, title, description, project_password_hash, youtube_url, word_limit, attempt_limit_per_category,
         review_cooldown_seconds, enable_feedback, test_mode, enabled, created_by_admin_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         codeNorm,
         title,
         description,
+        projectPasswordHash,
         youtubeUrl || null,
         Number(wordLimit) || 150,
         Number(attemptLimitPerCategory) || 3,
@@ -185,6 +195,7 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
     const {
       title,
       description,
+      projectPassword,
       youtubeUrl,
       wordLimit,
       attemptLimitPerCategory,
@@ -192,17 +203,25 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
       enableFeedback,
       testMode
     } = req.body;
+
+    if (!projectPassword) {
+      res.status(400).json({ error: 'Project password is required' });
+      return;
+    }
+
+    const projectPasswordHash = encryptPassword(String(projectPassword));
     
     const result = await pool.query<Project>(
       `UPDATE projects
        SET title = $2,
            description = $3,
-           youtube_url = $4,
-           word_limit = $5,
-           attempt_limit_per_category = $6,
-           review_cooldown_seconds = $7,
-           enable_feedback = $8,
-           test_mode = $9,
+           project_password_hash = $4,
+           youtube_url = $5,
+           word_limit = $6,
+           attempt_limit_per_category = $7,
+           review_cooldown_seconds = $8,
+           enable_feedback = $9,
+           test_mode = $10,
            updated_at = NOW()
        WHERE code = $1
        RETURNING *`,
@@ -210,6 +229,7 @@ router.put('/projects/:code', async (req: Request, res: Response): Promise<void>
         code,
         title,
         description,
+        projectPasswordHash,
         youtubeUrl || null,
         wordLimit,
         attemptLimitPerCategory,

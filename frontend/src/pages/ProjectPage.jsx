@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import Leaderboard from '../components/Leaderboard';
 import ReviewLoadingAnimation from '../components/ReviewLoadingAnimation';
@@ -16,6 +16,9 @@ export default function ProjectPage() {
   const [project, setProject] = useState(null);
   const [userName, setUserName] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [studentIdInput, setStudentIdInput] = useState('');
+  const [projectPasswordInput, setProjectPasswordInput] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   const [userNameSubmitted, setUserNameSubmitted] = useState(false);
   const [essay, setEssay] = useState('');
   const [userState, setUserState] = useState(null);
@@ -211,7 +214,7 @@ export default function ProjectPage() {
     const wordCount = essay.split(/\s+/).filter(w => w.length > 0).length;
     
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:3000'}/projects/${code}/editor-events`, {
+      await fetch(`/api/projects/${code}/editor-events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -467,6 +470,45 @@ export default function ProjectPage() {
     return text.trim().split(/\s+/).filter(w => w.length > 0).length;
   };
 
+  const handleStudentAccess = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const trimmedStudentId = studentIdInput.trim();
+    const trimmedProjectPassword = projectPasswordInput.trim();
+
+    if (!trimmedStudentId || !trimmedProjectPassword) {
+      setError('Student ID and project password are required');
+      return;
+    }
+
+    setAuthLoading(true);
+
+    try {
+      const result = await publicApi.validateStudent(code, trimmedStudentId, trimmedProjectPassword);
+      localStorage.setItem(`project_${code}_studentId`, result.studentId);
+      localStorage.setItem(`project_${code}_studentName`, result.studentName);
+
+      setStudentId(result.studentId);
+      setUserName(result.studentName);
+      setUserNameSubmitted(true);
+      setProjectPasswordInput('');
+
+      const savedEssay = localStorage.getItem(`project_${code}_${result.studentName}_essay`);
+      if (savedEssay) {
+        setEssay(savedEssay);
+      } else {
+        setEssay('');
+      }
+
+      await loadUserStateWithName(result.studentName);
+    } catch (err) {
+      setError(err.message || 'Failed to validate student access');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const wordCount = countWords(essay);
   const overLimit = project && wordCount > project.word_limit;
 
@@ -521,7 +563,7 @@ export default function ProjectPage() {
         {/* YouTube Video and Leaderboard */}
         {project.youtube_url && (
           <section style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'stretch' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: userNameSubmitted ? '2fr 1fr' : '1fr', gap: '24px', alignItems: 'stretch' }}>
               {/* Video */}
               <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', borderRadius: '8px' }}>
                 <iframe
@@ -534,15 +576,17 @@ export default function ProjectPage() {
               </div>
               
               {/* Leaderboard */}
-              <div style={{ height: '100%', display: 'flex' }}>
-                <div style={{ flex: 1, height: '100%' }}>
-                  <Leaderboard
-                    projectCode={code}
-                    refreshTrigger={leaderboardRefresh}
-                    currentUserName={userNameSubmitted ? userName : ''}
-                  />
+              {userNameSubmitted && (
+                <div style={{ height: '100%', display: 'flex' }}>
+                  <div style={{ flex: 1, height: '100%' }}>
+                    <Leaderboard
+                      projectCode={code}
+                      refreshTrigger={leaderboardRefresh}
+                      currentUserName={userNameSubmitted ? userName : ''}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </section>
         )}
@@ -553,11 +597,40 @@ export default function ProjectPage() {
             <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <h2 style={{ marginBottom: '12px' }}>Student Access Required</h2>
               <p style={{ marginBottom: '16px', color: '#666' }}>
-                Please return to the home page and enter your project code and student ID.
+                Enter your student ID and the project password to continue.
               </p>
-              <Link to="/">
-                <button className="primary">Back to Home</button>
-              </Link>
+
+              <form onSubmit={handleStudentAccess}>
+                <input
+                  type="text"
+                  value={studentIdInput}
+                  onChange={(e) => setStudentIdInput(e.target.value.toUpperCase())}
+                  placeholder="Enter student ID"
+                  style={{
+                    textAlign: 'center',
+                    fontSize: '18px',
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                    marginBottom: '12px'
+                  }}
+                />
+                <input
+                  type="password"
+                  value={projectPasswordInput}
+                  onChange={(e) => setProjectPasswordInput(e.target.value)}
+                  placeholder="Enter project password"
+                  style={{
+                    textAlign: 'center',
+                    fontSize: '18px',
+                    letterSpacing: '1px',
+                    marginBottom: '12px'
+                  }}
+                />
+                {error && <div className="error" style={{ marginBottom: '12px' }}>{error}</div>}
+                <button type="submit" className="primary" disabled={authLoading} style={{ width: '100%' }}>
+                  {authLoading ? 'Validating...' : 'Continue'}
+                </button>
+              </form>
             </div>
           </section>
         )}

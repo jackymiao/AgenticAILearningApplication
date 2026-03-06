@@ -1,5 +1,6 @@
 import request from 'supertest';
 import express from 'express';
+import { encryptPassword } from '../../utils/crypto.js';
 import publicRouter from '../public.js';
 import pool from '../../db/index.js';
 
@@ -18,9 +19,10 @@ describe('Public Routes', () => {
 
   describe('GET /public/projects/:code', () => {
     it('should return project when enabled', async () => {
+      const projectPasswordHash = encryptPassword('PASS123');
       await pool.query(
-        'INSERT INTO projects (code, title, description, enabled, created_by_admin_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO UPDATE SET enabled = $4',
-        ['TEST01', 'Test Project', 'Test Description', true,  '00000000-0000-0000-0000-000000000001']
+        'INSERT INTO projects (code, title, description, enabled, project_password_hash, created_by_admin_id) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO UPDATE SET enabled = $4, project_password_hash = $5',
+        ['TEST01', 'Test Project', 'Test Description', true, projectPasswordHash, '00000000-0000-0000-0000-000000000001']
       );
 
       const response = await request(app).get('/public/projects/TEST01');
@@ -31,9 +33,10 @@ describe('Public Routes', () => {
     });
 
     it('should block access when project is disabled', async () => {
+      const projectPasswordHash = encryptPassword('PASS123');
       await pool.query(
-        'INSERT INTO projects (code, title, description, enabled, created_by_admin_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO UPDATE SET enabled = $4',
-        ['TEST01', 'Test Project', 'Test Description', false,  '00000000-0000-0000-0000-000000000001']
+        'INSERT INTO projects (code, title, description, enabled, project_password_hash, created_by_admin_id) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO UPDATE SET enabled = $4, project_password_hash = $5',
+        ['TEST01', 'Test Project', 'Test Description', false, projectPasswordHash, '00000000-0000-0000-0000-000000000001']
       );
 
       const response = await request(app).get('/public/projects/TEST01');
@@ -45,10 +48,11 @@ describe('Public Routes', () => {
 
   describe('POST /public/projects/:code/validate-student', () => {
     it('should validate student when project is enabled', async () => {
+      const projectPasswordHash = encryptPassword('PASS123');
       // Setup project (ensure it's enabled)
       await pool.query(
-        'INSERT INTO projects (code, title, description, enabled, created_by_admin_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO UPDATE SET enabled = $4',
-        ['TEST01', 'Test Project', 'Test Description', true,  '00000000-0000-0000-0000-000000000001']
+        'INSERT INTO projects (code, title, description, enabled, project_password_hash, created_by_admin_id) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO UPDATE SET enabled = $4, project_password_hash = $5',
+        ['TEST01', 'Test Project', 'Test Description', true, projectPasswordHash, '00000000-0000-0000-0000-000000000001']
       );
 
       // Add test student
@@ -59,7 +63,7 @@ describe('Public Routes', () => {
 
       const response = await request(app)
         .post('/public/projects/TEST01/validate-student')
-        .send({ studentId: 'JD1234' });
+        .send({ studentId: 'JD1234', projectPassword: 'PASS123' });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('studentName', 'John Doe');
@@ -67,15 +71,16 @@ describe('Public Routes', () => {
     });
 
     it('should block validation when project is disabled', async () => {
+      const projectPasswordHash = encryptPassword('PASS123');
       // Explicitly set project to disabled
       await pool.query(
-        'INSERT INTO projects (code, title, description, enabled, created_by_admin_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO UPDATE SET enabled = $4',
-        ['TEST01', 'Test Project', 'Test Description', false,  '00000000-0000-0000-0000-000000000001']
+        'INSERT INTO projects (code, title, description, enabled, project_password_hash, created_by_admin_id) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (code) DO UPDATE SET enabled = $4, project_password_hash = $5',
+        ['TEST01', 'Test Project', 'Test Description', false, projectPasswordHash, '00000000-0000-0000-0000-000000000001']
       );
 
       const response = await request(app)
         .post('/public/projects/TEST01/validate-student')
-        .send({ studentId: 'JD1234' });
+        .send({ studentId: 'JD1234', projectPassword: 'PASS123' });
 
       expect(response.status).toBe(403);
       expect(response.body).toEqual({ error: 'This project is currently disabled' });

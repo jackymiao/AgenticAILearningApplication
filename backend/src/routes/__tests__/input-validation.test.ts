@@ -1,5 +1,6 @@
 import request from 'supertest';
 import express from 'express';
+import { encryptPassword } from '../../utils/crypto.js';
 import publicRouter from '../public.js';
 import pool from '../../db/index.js';
 
@@ -24,11 +25,12 @@ describe('Input Validation', () => {
     );
 
     // Create test project
+    const projectPasswordHash = encryptPassword('PASS123');
     await pool.query(
-      `INSERT INTO projects (code, title, description, word_limit, attempt_limit_per_category, created_by_admin_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO projects (code, title, description, project_password_hash, word_limit, attempt_limit_per_category, created_by_admin_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (code) DO NOTHING`,
-      [testProjectCode, 'Validation Test', 'Test', 150, 3, testAdminId]
+      [testProjectCode, 'Validation Test', 'Test', projectPasswordHash, 150, 3, testAdminId]
     );
 
     // Create test student
@@ -88,7 +90,7 @@ describe('Input Validation', () => {
     it('should validate student endpoint responds', async () => {
       const response = await request(app)
         .post(`/public/projects/${testProjectCode}/validate-student`)
-        .send({ studentId: 'valstudent' });
+        .send({ studentId: 'valstudent', projectPassword: 'PASS123' });
 
       expect([200, 404]).toContain(response.status);
       if (response.status === 200) {
