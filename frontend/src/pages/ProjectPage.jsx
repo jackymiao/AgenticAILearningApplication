@@ -93,9 +93,13 @@ export default function ProjectPage() {
       /* Ensure list bullets and numbers display */
       .project-description ul {
         list-style-type: disc !important;
+        list-style-position: outside !important;
+        padding-left: 1.5em !important;
       }
       .project-description ol {
         list-style-type: decimal !important;
+        list-style-position: outside !important;
+        padding-left: 1.5em !important;
       }
       .project-description li {
         display: list-item !important;
@@ -596,7 +600,6 @@ export default function ProjectPage() {
                 wordWrap: 'break-word',
                 overflowWrap: 'break-word',
                 maxWidth: '100%',
-                overflow: 'hidden',
                 padding: 0
               }}
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(project.description, { ALLOW_DATA_ATTR: false, ALLOWED_TAGS: ['b', 'i', 'u', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img', 'div', 'span'], ALLOWED_ATTR: ['href', 'style', 'src', 'class'] }) }}
