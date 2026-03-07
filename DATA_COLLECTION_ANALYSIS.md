@@ -137,7 +137,7 @@ ORDER BY total_time_ms DESC;
 
 ## 3. GAME EVENT
 
-**Requirement**: Timestamp of steal, count of steal success/fail, shield usage
+**Requirement**: Timestamp of steal, count of steal success/fail, shield usage, remaining passes
 
 ### Current Coverage ✅ READY
 
@@ -151,9 +151,56 @@ ORDER BY total_time_ms DESC;
   - `shield_used` - BOOLEAN flag if shield was deployed
   - `expires_at` - when steal window closes
 
+- **Table**: `player_state`
+  - `review_tokens` - current remaining passes for each student (`remaining_passes`)
+
 ### Data Collected
 
 ```sql
+-- Current remaining passes for the targeted user (latest state)
+SELECT
+  a.id as attack_id,
+  a.created_at,
+  a.target_name_norm,
+  ps.review_tokens as remaining_passes,
+  a.status,
+  a.shield_used,
+  a.responded_at
+FROM attacks a
+JOIN player_state ps
+  ON a.project_code = ps.project_code
+  AND a.target_name_norm = ps.user_name_norm
+WHERE a.project_code = $1
+ORDER BY a.created_at;
+
+-- Estimated remaining passes at attack time (timeline reconstruction)
+SELECT
+  a.id as attack_id,
+  a.created_at as attacked_at,
+  a.target_name_norm,
+  (
+    p.attempt_limit_per_category
+    - (
+      SELECT COUNT(*)
+      FROM review_attempts ra
+      WHERE ra.project_code = a.project_code
+        AND ra.user_name_norm = a.target_name_norm
+        AND ra.created_at < a.created_at
+    )
+    - (
+      SELECT COUNT(*)
+      FROM attacks a2
+      WHERE a2.project_code = a.project_code
+        AND a2.target_name_norm = a.target_name_norm
+        AND a2.created_at < a.created_at
+        AND a2.status IN ('succeeded', 'expired')
+    )
+  ) as remaining_passes_at_attack_time
+FROM attacks a
+JOIN projects p ON p.code = a.project_code
+WHERE a.project_code = $1
+ORDER BY a.created_at;
+
 -- Count successful steals per player
 SELECT
   attacker_name_norm,
@@ -255,12 +302,12 @@ ORDER BY event_time;
 
 ## Summary Table
 
-| Data Type          | Status      | Current Table(s)                 | Key Fields                                                                         | Action Required |
-| ------------------ | ----------- | -------------------------------- | ---------------------------------------------------------------------------------- | --------------- |
-| **Draft Snapshot** | ✅ Complete | `review_attempts`, `submissions` | `essay_snapshot`, `essay`, `attempt_number`, `created_at`, `submitted_at`          | None            |
-| **Time on Task**   | ✅ Complete | `editor_sessions`                | `event_type`, `duration_ms`, `essay_length`, `current_attempt_number`, `timestamp` | None            |
-| **Game Event**     | ✅ Complete | `attacks`                        | `created_at`, `responded_at`, `shield_used`, `status`                              | None            |
-| **Task Event**     | ✅ Complete | `review_attempts`, `submissions` | `created_at`, `attempt_number`, `status`, `score`, `submitted_at`                  | None            |
+| Data Type          | Status      | Current Table(s)                 | Key Fields                                                                                  | Action Required |
+| ------------------ | ----------- | -------------------------------- | ------------------------------------------------------------------------------------------- | --------------- |
+| **Draft Snapshot** | ✅ Complete | `review_attempts`, `submissions` | `essay_snapshot`, `essay`, `attempt_number`, `created_at`, `submitted_at`                   | None            |
+| **Time on Task**   | ✅ Complete | `editor_sessions`                | `event_type`, `duration_ms`, `essay_length`, `current_attempt_number`, `timestamp`          | None            |
+| **Game Event**     | ✅ Complete | `attacks`, `player_state`        | `created_at`, `responded_at`, `shield_used`, `status`, `review_tokens` (`remaining_passes`) | None            |
+| **Task Event**     | ✅ Complete | `review_attempts`, `submissions` | `created_at`, `attempt_number`, `status`, `score`, `submitted_at`                           | None            |
 
 ---
 
