@@ -30,10 +30,19 @@ router.post('/admin/signup', async (req: Request, res: Response): Promise<void> 
     req.session.adminUsername = admin.username;
     req.session.isSuperAdmin = admin.is_super_admin || false;
     
-    res.json({
-      isAdmin: true,
-      adminName: admin.username,
-      isSuperAdmin: admin.is_super_admin || false
+    // Explicitly save session before responding (critical for cross-origin + PostgreSQL store)
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        res.status(500).json({ error: 'Session creation failed' });
+        return;
+      }
+      
+      res.json({
+        isAdmin: true,
+        adminName: admin.username,
+        isSuperAdmin: admin.is_super_admin || false
+      });
     });
   } catch (error: any) {
     if (error.code === '23505') { // Unique constraint violation
@@ -67,10 +76,19 @@ router.post('/admin/login', async (req: Request, res: Response): Promise<void> =
     req.session.adminUsername = admin.username;
     req.session.isSuperAdmin = admin.is_super_admin || false;
     
-    res.json({
-      isAdmin: true,
-      adminName: admin.username,
-      isSuperAdmin: admin.is_super_admin || false
+    // Explicitly save session before responding (critical for cross-origin + PostgreSQL store)
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        res.status(500).json({ error: 'Session creation failed' });
+        return;
+      }
+      
+      res.json({
+        isAdmin: true,
+        adminName: admin.username,
+        isSuperAdmin: admin.is_super_admin || false
+      });
     });
   } catch (error) {
     console.error('Login error:', error);
