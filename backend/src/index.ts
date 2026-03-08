@@ -37,11 +37,30 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function parseAllowedOrigins(): string[] {
+  const fromList = (process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const single = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
+  return Array.from(new Set([single, ...fromList]));
+}
+
+function parseSameSite(value: string | undefined): 'lax' | 'strict' | 'none' {
+  const normalized = (value || '').toLowerCase();
+  if (normalized === 'strict') return 'strict';
+  if (normalized === 'none') return 'none';
+  return 'lax';
+}
+
 // Session store
 const PgStore = pgSession(session);
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
+
+// Trust reverse proxy/CDN so secure cookies are set correctly in production
+app.set('trust proxy', 1);
 
 // Set server timeout to 5 minutes for long-running AI agent calls
 app.use((req, res, next) => {
@@ -51,15 +70,39 @@ app.use((req, res, next) => {
 });
 
 // CORS configuration
+const allowedOrigins = parseAllowedOrigins();
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 };
 
+const sessionSameSite = parseSameSite(
+  process.env.SESSION_COOKIE_SAMESITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax')
+);
+const sessionCookieSecure =
+  process.env.SESSION_COOKIE_SECURE === 'true' ||
+  (process.env.SESSION_COOKIE_SECURE !== 'false' && process.env.NODE_ENV === 'production');
+
 console.log('🔒 CORS Configuration:');
-console.log('  Allowed Origin:', corsOptions.origin);
+console.log('  Allowed Origins:', allowedOrigins);
 console.log('  Credentials:', corsOptions.credentials);
 console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('🍪 Session Cookie Configuration:');
+console.log('  sameSite:', sessionSameSite);
+console.log('  secure:', sessionCookieSecure);
+console.log('  domain:', process.env.SESSION_COOKIE_DOMAIN || '(host-only)');
 
 app.use(cors(corsOptions));
 
@@ -72,13 +115,15 @@ app.use(
       createTableIfMissing: true
     }),
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    name: process.env.SESSION_COOKIE_NAME || 'connect.sid',
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: sessionCookieSecure,
       httpOnly: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+      sameSite: sessionSameSite,
+      domain: process.env.SESSION_COOKIE_DOMAIN || undefined
     },
     proxy: true
   })
