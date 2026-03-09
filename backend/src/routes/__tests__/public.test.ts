@@ -86,4 +86,22 @@ describe('Public Routes', () => {
       expect(response.body).toEqual({ error: 'This project is currently disabled' });
     });
   });
+
+  describe('POST /public/projects/:code/submissions/final', () => {
+    it('should block final submission when project is disabled', async () => {
+      await pool.query('DELETE FROM submissions WHERE project_code = $1', ['TEST01']);
+
+      await pool.query(
+        'INSERT INTO projects (code, title, description, enabled, created_by_admin_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO UPDATE SET enabled = $4',
+        ['TEST01', 'Test Project', 'Test Description', false, '00000000-0000-0000-0000-000000000001']
+      );
+
+      const response = await request(app)
+        .post('/public/projects/TEST01/submissions/final')
+        .send({ userName: 'John Doe', essay: 'Final draft essay text.' });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'This project is currently disabled' });
+    });
+  });
 });

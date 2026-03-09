@@ -433,6 +433,10 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       });
       return;
     }
+
+    // Re-check right before persistence to prevent writes if admin disabled the project mid-flow.
+    const enabledBeforePersist = await ensureProjectEnabled(code, res);
+    if (!enabledBeforePersist) return;
     
     // Extract results for each category
     const categories: ReviewCategory[] = ['content', 'structure', 'mechanics'];
@@ -600,10 +604,27 @@ router.post('/projects/:code/submissions/final', async (req: Request, res: Respo
     // Insert submission (unique constraint will prevent duplicates)
     const result = await pool.query<{ id: string; submitted_at: Date }>(
       `INSERT INTO submissions (project_code, user_name, user_name_norm, essay)
-       VALUES ($1, $2, $3, $4)
+       SELECT $1, $2, $3, $4
+       FROM projects
+       WHERE code = $1 AND enabled = TRUE
        RETURNING id, submitted_at`,
       [code, userName, userNameNorm, essay]
     );
+
+    if (result.rows.length === 0) {
+      const projectStatus = await pool.query<Pick<Project, 'enabled'>>(
+        'SELECT enabled FROM projects WHERE code = $1',
+        [code]
+      );
+
+      if (projectStatus.rows.length === 0) {
+        res.status(404).json({ error: 'Project not found' });
+        return;
+      }
+
+      res.status(403).json({ error: 'This project is currently disabled' });
+      return;
+    }
     
     const submission = result.rows[0];
     

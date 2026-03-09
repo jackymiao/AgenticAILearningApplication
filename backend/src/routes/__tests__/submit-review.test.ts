@@ -266,6 +266,23 @@ describe('POST /public/projects/:code/reviews - Submit Essay for Review', () => 
   });
 
   describe('Error Handling', () => {
+    it('should return 403 when project is disabled', async () => {
+      await pool.query(
+        `UPDATE projects SET enabled = false WHERE code = $1`,
+        [testProjectCode]
+      );
+
+      const response = await request(app)
+        .post(`/public/projects/${testProjectCode}/reviews`)
+        .send({
+          userName: testUserName,
+          essay: testEssay
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'This project is currently disabled' });
+    });
+
     it('should return 400 when userName is missing', async () => {
       const response = await request(app)
         .post(`/public/projects/${testProjectCode}/reviews`)

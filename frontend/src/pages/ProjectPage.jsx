@@ -27,6 +27,7 @@ export default function ProjectPage() {
   const [activeTab, setActiveTab] = useState('content');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [projectDisabled, setProjectDisabled] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
@@ -185,12 +186,47 @@ export default function ProjectPage() {
     try {
       const data = await publicApi.getProject(code);
       setProject(data);
+      setProjectDisabled(false);
       setLoading(false);
     } catch (err) {
+      if (err?.status === 403 && String(err?.message || '').toLowerCase().includes('disabled')) {
+        setProjectDisabled(true);
+      }
       setError(err.message);
       setLoading(false);
     }
   };
+
+  const checkProjectAvailability = useCallback(async () => {
+    try {
+      await publicApi.getProject(code);
+      setProjectDisabled(false);
+      return true;
+    } catch (err) {
+      if (err?.status === 403 && String(err?.message || '').toLowerCase().includes('disabled')) {
+        setProjectDisabled(true);
+        setError('This project is currently disabled');
+        return false;
+      }
+      throw err;
+    }
+  }, [code]);
+
+  useEffect(() => {
+    if (!userNameSubmitted) return;
+
+    const refreshAvailability = async () => {
+      try {
+        await checkProjectAvailability();
+      } catch (err) {
+        // Ignore transient network issues for passive status polling.
+      }
+    };
+
+    refreshAvailability();
+    const interval = setInterval(refreshAvailability, 15000);
+    return () => clearInterval(interval);
+  }, [userNameSubmitted, checkProjectAvailability]);
 
   // Initialize player and get tokens
   const initializePlayer = useCallback(async () => {
@@ -333,6 +369,10 @@ export default function ProjectPage() {
 
   const handleRunReview = async () => {
     setError('');
+
+    const available = await checkProjectAvailability();
+    if (!available) return;
+
     setReviewLoading(true);
     
     try {
@@ -402,6 +442,9 @@ export default function ProjectPage() {
       
     } catch (err) {
       console.error('[FRONTEND] Error:', err);
+      if (err?.status === 403 && String(err?.message || '').toLowerCase().includes('disabled')) {
+        setProjectDisabled(true);
+      }
       setError(err.message);
     } finally {
       setReviewLoading(false);
@@ -409,6 +452,9 @@ export default function ProjectPage() {
   };
 
   const handleFinalSubmit = async () => {
+    const available = await checkProjectAvailability();
+    if (!available) return;
+
     if (!window.confirm('Are you sure you want to submit? You can only submit once.')) {
       return;
     }
@@ -441,6 +487,9 @@ export default function ProjectPage() {
         }
       }
     } catch (err) {
+      if (err?.status === 403 && String(err?.message || '').toLowerCase().includes('disabled')) {
+        setProjectDisabled(true);
+      }
       setError(err.message);
     } finally {
       setSubmitLoading(false);
@@ -701,6 +750,20 @@ export default function ProjectPage() {
                 <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>Student ID: {studentId}</div>
               </div>
             </section>
+            {projectDisabled && (
+              <section style={{ marginBottom: '24px' }}>
+                <div style={{
+                  backgroundColor: '#fff5f5',
+                  border: '2px solid #f44336',
+                  color: '#c62828',
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  fontWeight: '600'
+                }}>
+                  Project is currently disabled. Review and final submission are unavailable.
+                </div>
+              </section>
+            )}
             {/* Token Display */}
             {tokens && (
               <section style={{ marginBottom: '24px' }}>
@@ -777,6 +840,7 @@ export default function ProjectPage() {
                       reviewLoading || 
                       !essay.trim() || 
                       overLimit ||
+                      projectDisabled ||
                       cooldownRemaining > 0 ||
                       (tokens && tokens.reviewTokens < 1) ||
                       userState?.attemptsRemaining <= 0
@@ -1020,7 +1084,7 @@ export default function ProjectPage() {
                   </p>
                   <button
                     onClick={handleFinalSubmit}
-                    disabled={submitLoading || !essay.trim() || overLimit}
+                    disabled={submitLoading || !essay.trim() || overLimit || projectDisabled}
                     className="primary"
                     style={{ fontSize: '16px', padding: '12px 32px' }}
                   >

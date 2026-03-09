@@ -9,6 +9,9 @@ jest.mock('../../api/endpoints', () => ({
     getProject: jest.fn(),
     validateStudent: jest.fn(),
     getUserState: jest.fn(),
+    submitReview: jest.fn(),
+    submitFinal: jest.fn(),
+    checkFeedback: jest.fn(),
   },
   gameApi: {
     initPlayer: jest.fn(),
@@ -153,5 +156,53 @@ describe('ProjectPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Invalid project password')).toBeInTheDocument();
     });
+  });
+
+  it('shows disabled banner and disables review/final submit buttons when project is disabled', async () => {
+    const disabledError = new Error('This project is currently disabled');
+    disabledError.status = 403;
+
+    // First call from initial load succeeds, subsequent availability check fails as disabled.
+    publicApi.getProject
+      .mockResolvedValueOnce({
+        code: 'TEST01',
+        title: 'Test Project',
+        description: 'Project description',
+        word_limit: 150,
+        attempt_limit_per_category: 3,
+        youtube_url: '',
+      })
+      .mockRejectedValue(disabledError);
+
+    publicApi.getUserState.mockResolvedValue({
+      alreadySubmitted: false,
+      attemptsRemaining: 3,
+      reviewHistory: {
+        content: [],
+        structure: [],
+        mechanics: [],
+      },
+      cooldownRemaining: 0,
+    });
+
+    gameApi.initPlayer.mockResolvedValue({
+      reviewTokens: 3,
+      attackTokens: 0,
+      shieldTokens: 0,
+      cooldownRemaining: 0,
+    });
+
+    window.localStorage.setItem('project_TEST01_studentName', 'Jane Smith');
+    window.localStorage.setItem('project_TEST01_studentId', 'JS1234');
+    window.localStorage.setItem('project_TEST01_Jane Smith_essay', 'This is my essay.');
+
+    renderProjectPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Project is currently disabled. Review and final submission are unavailable.')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('submit-review-btn')).toBeDisabled();
+    expect(screen.getByText('Submit Final Essay')).toBeDisabled();
   });
 });
