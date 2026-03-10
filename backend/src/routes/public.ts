@@ -3,6 +3,7 @@ import { decryptPassword } from '../utils/crypto.js';
 import pool, { normalizeProjectCode, normalizeUserName, normalizeStudentId } from '../db/index.js';
 import { runWorkflow } from '../sdk/reviewSdk.js';
 import { detectAIContent, storeDetectionResult } from '../services/aiDetection.js';
+import { compareEssaysOptimized } from '../services/essayComparison.js';
 import type { Project, ReviewAttempt, ReviewCategory, UserState } from '../types.js';
 
 const router = express.Router();
@@ -356,6 +357,18 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
     const previousEssay = previousEssayResult.rows.length > 0 
       ? previousEssayResult.rows[0].essay_snapshot 
       : null;
+    
+    // Check if essay is identical to previous submission
+    if (previousEssay) {
+      const comparisonResult = compareEssaysOptimized(previousEssay, essay);
+      if (comparisonResult.areEqual) {
+        res.status(400).json({ 
+          error: 'Please revise your essay based on the previous feedback before submitting again',
+          code: 'ESSAY_UNCHANGED'
+        });
+        return;
+      }
+    }
     
     // Prepare input for SDK
     let sdkInput = `<<<CURRENT_START>>>\n${essay}\n<<<CURRENT_END>>>`;
