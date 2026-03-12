@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ShieldTokenIcon } from './TokenIcons';
+import { useDefenseCountdown } from '../hooks/useDefenseCountdown';
 
 // Use import.meta for Vite, process.env for tests
 const API_BASE = typeof process !== 'undefined' && process.env.VITE_API_BASE 
@@ -13,9 +14,9 @@ export default function DefenseModal({
   onDefend,
   onClose 
 }) {
-  const [timeLeft, setTimeLeft] = useState(15);
   const [defending, setDefending] = useState(false);
   const defendingRef = useRef(false);
+  const handleDefendRef = useRef(null);
 
   const handleDefend = useCallback(async (useShield) => {
     if (defendingRef.current) return;
@@ -50,27 +51,21 @@ export default function DefenseModal({
   }, [attackId, projectCode, onDefend, onClose]);
 
   useEffect(() => {
+    handleDefendRef.current = handleDefend;
+  }, [handleDefend]);
+
+  useEffect(() => {
     if (!attackId) return;
-    
-    // Reset defending state when attackId changes
+
     defendingRef.current = false;
     setDefending(false);
-    setTimeLeft(15);
-    
-    // Countdown timer
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          // Time's up - auto accept
-          handleDefend(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  }, [attackId]);
 
-    return () => clearInterval(timer);
-  }, [attackId, handleDefend]);
+  const timeLeft = useDefenseCountdown(
+    attackId,
+    () => handleDefendRef.current?.(false),
+    15,
+  );
 
   if (!attackId) return null;
 
