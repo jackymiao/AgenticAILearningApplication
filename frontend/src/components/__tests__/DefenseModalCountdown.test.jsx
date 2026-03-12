@@ -69,4 +69,22 @@ describe('DefenseModal countdown', () => {
     expect(screen.getByTestId('time-left')).toHaveTextContent('13');
     expect(screen.getByTestId('timeout-count')).toHaveTextContent('0');
   });
+
+  it('fires the timeout only once after the deadline passes', () => {
+    render(<ParentRerenderHarness attackId="attack-123" />);
+
+    act(() => {
+      jest.advanceTimersByTime(16000);
+    });
+
+    expect(screen.getByTestId('time-left')).toHaveTextContent('0');
+    expect(screen.getByTestId('timeout-count')).toHaveTextContent('1');
+
+    act(() => {
+      jest.advanceTimersByTime(4000);
+    });
+
+    expect(screen.getByTestId('time-left')).toHaveTextContent('0');
+    expect(screen.getByTestId('timeout-count')).toHaveTextContent('1');
+  });
 });
