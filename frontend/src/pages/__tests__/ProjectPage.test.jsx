@@ -578,6 +578,16 @@ describe('ProjectPage', () => {
         'TEST01',
         expect.objectContaining({
           userName: 'Jane Smith',
+          eventType: 'focus',
+          essay_length: 5,
+          attempt_number: 0,
+        })
+      );
+
+      expect(publicApi.logEditorEvent).toHaveBeenCalledWith(
+        'TEST01',
+        expect.objectContaining({
+          userName: 'Jane Smith',
           eventType: 'blur',
           essay_length: 5,
           attempt_number: 0,
@@ -585,7 +595,11 @@ describe('ProjectPage', () => {
       );
     });
 
-    const payload = publicApi.logEditorEvent.mock.calls[0][1];
-    expect(typeof payload.duration_ms).toBe('number');
+    const blurPayload = publicApi.logEditorEvent.mock.calls
+      .map(([, payload]) => payload)
+      .find((payload) => payload.eventType === 'blur');
+
+    expect(blurPayload).toBeDefined();
+    expect(typeof blurPayload.duration_ms).toBe('number');
   });
 });

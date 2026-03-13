@@ -287,6 +287,19 @@ export default function ProjectPage() {
   // Editor event tracking for time-on-task analytics
   const handleEditorFocus = () => {
     editorFocusTimeRef.current = Date.now();
+
+    const wordCount = essay.split(/\s+/).filter(w => w.length > 0).length;
+    publicApi
+      .logEditorEvent(code, {
+        userName,
+        eventType: 'focus',
+        duration_ms: null,
+        essay_length: wordCount,
+        attempt_number: attemptNumberRef.current
+      })
+      .catch((err) => {
+        console.error('[EDITOR] ❌ Failed to log focus event:', err);
+      });
   };
 
   const handleEditorBlur = async () => {
