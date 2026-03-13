@@ -573,7 +573,7 @@ describe('ProjectPage', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/projects/TEST01/editor-events',
+        '/api/public/projects/TEST01/editor-events',
         expect.objectContaining({
           method: 'POST',
           credentials: 'include',
