@@ -165,7 +165,7 @@ router.get('/projects/:code/user-state', async (req: Request, res: Response): Pr
     // Calculate cooldown remaining (if any)
     let cooldownRemaining = 0;
     if (lastReviewAt) {
-      const cooldownSeconds = projectResult.rows[0].review_cooldown_seconds || 120;
+      const cooldownSeconds = projectResult.rows[0].review_cooldown_seconds ?? 120;
       const cooldownMs = cooldownSeconds * 1000;
       const lastReviewTime = new Date(lastReviewAt).getTime();
       const elapsed = Date.now() - lastReviewTime;
@@ -277,7 +277,7 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       const now = Date.now();
       const elapsed = now - lastReviewTime;
       // Convert project's cooldown seconds to milliseconds
-      const cooldownMs = (project.review_cooldown_seconds || 120) * 1000;
+      const cooldownMs = (project.review_cooldown_seconds ?? 120) * 1000;
       
       if (elapsed < cooldownMs) {
         const remaining = Math.ceil((cooldownMs - elapsed) / 1000);
@@ -581,7 +581,7 @@ router.post('/projects/:code/reviews', async (req: Request, res: Response): Prom
       finalScore: calculatedFinalScore,
       attemptsRemaining: updatedTokens.review_tokens,
       tokens: updatedTokens,
-      cooldownMs: (project.review_cooldown_seconds || 120) * 1000
+      cooldownMs: (project.review_cooldown_seconds ?? 120) * 1000
     };
     
 
@@ -713,11 +713,16 @@ router.get('/projects/:code/leaderboard', async (req: Request, res: Response): P
 // Track editor focus/blur events for time-on-task analytics
 router.post('/projects/:code/editor-events', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code } = req.params;
+    const code = normalizeProjectCode(req.params.code);
     const { userName, eventType, duration_ms, essay_length, attempt_number } = req.body;
     
     if (!userName || !eventType) {
       res.status(400).json({ error: 'userName and eventType required' });
+      return;
+    }
+
+    if (!['focus', 'blur'].includes(eventType)) {
+      res.status(400).json({ error: "eventType must be 'focus' or 'blur'" });
       return;
     }
     

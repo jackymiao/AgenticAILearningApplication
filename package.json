@@ -4,6 +4,9 @@
   "description": "E2E tests for Agentic AI Learning Platform",
   "type": "module",
   "scripts": {
+    "test:backend": "npm --prefix backend test -- --runInBand --silent",
+    "test:frontend": "npm --prefix frontend test -- --runInBand",
+    "test:all": "npm run test:backend && npm run test:frontend",
     "e2e:seed": "node e2e/seed.mjs",
     "e2e:test": "E2E_TEST=1 REVIEW_COOLDOWN_MS=10000 node e2e/game-attack.spec.mjs",
     "e2e:all": "npm run e2e:seed && E2E_TEST=1 REVIEW_COOLDOWN_MS=10000 node e2e/game-attack.spec.mjs",

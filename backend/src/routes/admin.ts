@@ -578,6 +578,255 @@ router.delete('/projects', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
+// Get editor sessions (time on task) for a project
+router.get('/projects/:code/analytics/time-on-task', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+
+    const projectResult = await pool.query('SELECT code FROM projects WHERE code = $1', [code]);
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    // Per-student summary
+    const summaryResult = await pool.query(
+      `SELECT
+         user_name_norm,
+         COUNT(CASE WHEN event_type = 'blur' THEN 1 END)::int AS total_focus_sessions,
+         COALESCE(SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END), 0)::int AS total_time_ms,
+         ROUND(COALESCE(SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END), 0) / 1000.0 / 60, 2) AS total_time_minutes
+       FROM editor_sessions
+       WHERE project_code = $1
+       GROUP BY user_name_norm
+       ORDER BY total_time_ms DESC`,
+      [code]
+    );
+
+    // Per-student per-attempt breakdown
+    const byAttemptResult = await pool.query(
+      `SELECT
+         user_name_norm,
+         current_attempt_number,
+         ROUND(COALESCE(SUM(CASE WHEN event_type = 'blur' THEN duration_ms ELSE 0 END), 0) / 1000.0 / 60, 2) AS time_minutes,
+         MAX(essay_length) AS final_essay_length
+       FROM editor_sessions
+       WHERE project_code = $1 AND event_type = 'blur'
+       GROUP BY user_name_norm, current_attempt_number
+       ORDER BY user_name_norm, current_attempt_number`,
+      [code]
+    );
+
+    // Raw event timeline
+    const eventsResult = await pool.query(
+      `SELECT
+         user_name_norm,
+         event_type,
+         timestamp,
+         duration_ms,
+         essay_length,
+         current_attempt_number
+       FROM editor_sessions
+       WHERE project_code = $1
+       ORDER BY timestamp`,
+      [code]
+    );
+
+    res.json({
+      summary: summaryResult.rows,
+      byAttempt: byAttemptResult.rows,
+      events: eventsResult.rows
+    });
+  } catch (error) {
+    console.error('Get time-on-task error:', error);
+    res.status(500).json({ error: 'Failed to fetch time-on-task data' });
+  }
+});
+
+// Get game events (attacks/shields) for a project
+router.get('/projects/:code/analytics/game-events', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+
+    const projectResult = await pool.query('SELECT code FROM projects WHERE code = $1', [code]);
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    // Attack timeline with current remaining passes
+    const attacksResult = await pool.query(
+      `SELECT
+         a.id AS attack_id,
+         a.created_at,
+         a.attacker_name_norm,
+         a.target_name_norm,
+         a.status,
+         a.shield_used,
+         a.responded_at,
+         ps.review_tokens AS remaining_passes
+       FROM attacks a
+       JOIN player_state ps
+         ON a.project_code = ps.project_code
+         AND a.target_name_norm = ps.user_name_norm
+       WHERE a.project_code = $1
+       ORDER BY a.created_at`,
+      [code]
+    );
+
+    // Per-player steal summary
+    const statsResult = await pool.query(
+      `SELECT
+         attacker_name_norm,
+         COUNT(CASE WHEN status = 'succeeded' THEN 1 END)::int AS steal_success_count,
+         COUNT(CASE WHEN status = 'defended' THEN 1 END)::int AS steal_fail_count,
+         COUNT(CASE WHEN status = 'pending' THEN 1 END)::int AS steal_pending_count,
+         COUNT(CASE WHEN status = 'expired' THEN 1 END)::int AS steal_expired_count
+       FROM attacks
+       WHERE project_code = $1
+       GROUP BY attacker_name_norm`,
+      [code]
+    );
+
+    // Shield usage per player
+    const shieldsResult = await pool.query(
+      `SELECT
+         target_name_norm,
+         COUNT(*)::int AS shields_used
+       FROM attacks
+       WHERE project_code = $1 AND shield_used = TRUE
+       GROUP BY target_name_norm
+       ORDER BY shields_used DESC`,
+      [code]
+    );
+
+    res.json({
+      attacks: attacksResult.rows,
+      playerStats: statsResult.rows,
+      shieldUsage: shieldsResult.rows
+    });
+  } catch (error) {
+    console.error('Get game-events error:', error);
+    res.status(500).json({ error: 'Failed to fetch game events data' });
+  }
+});
+
+// Get all review attempts (draft snapshots + task events) for a project
+router.get('/projects/:code/analytics/review-attempts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+
+    const projectResult = await pool.query('SELECT code FROM projects WHERE code = $1', [code]);
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const result = await pool.query(
+      `SELECT
+         user_name,
+         user_name_norm,
+         attempt_number,
+         category,
+         status,
+         score,
+         final_score,
+         essay_snapshot,
+         created_at
+       FROM review_attempts
+       WHERE project_code = $1
+       ORDER BY user_name_norm, created_at`,
+      [code]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get review-attempts error:', error);
+    res.status(500).json({ error: 'Failed to fetch review attempts data' });
+  }
+});
+
+// Get comprehensive data export for a project (all 4 data types combined)
+router.get('/projects/:code/analytics/export', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+
+    const projectResult = await pool.query('SELECT code, title FROM projects WHERE code = $1', [code]);
+    if (projectResult.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
+
+    const [reviewAttemptsRes, editorSessionsRes, attacksRes, submissionsRes] = await Promise.all([
+      pool.query(
+        `SELECT
+           'draft_snapshot' AS event_category,
+           user_name,
+           user_name_norm,
+           created_at AS timestamp,
+           attempt_number,
+           category,
+           status,
+           score,
+           final_score,
+           LENGTH(essay_snapshot) AS essay_char_count
+         FROM review_attempts
+         WHERE project_code = $1`,
+        [code]
+      ),
+      pool.query(
+        `SELECT
+           'editor_session' AS event_category,
+           user_name_norm,
+           timestamp,
+           event_type,
+           duration_ms,
+           essay_length,
+           current_attempt_number AS attempt_number
+         FROM editor_sessions
+         WHERE project_code = $1`,
+        [code]
+      ),
+      pool.query(
+        `SELECT
+           'game_event' AS event_category,
+           attacker_name_norm AS user_name_norm,
+           created_at AS timestamp,
+           target_name_norm,
+           status,
+           shield_used,
+           responded_at
+         FROM attacks
+         WHERE project_code = $1`,
+        [code]
+      ),
+      pool.query(
+        `SELECT
+           'final_submission' AS event_category,
+           user_name,
+           user_name_norm,
+           submitted_at AS timestamp,
+           admin_score,
+           LENGTH(essay) AS essay_char_count
+         FROM submissions
+         WHERE project_code = $1`,
+        [code]
+      )
+    ]);
+
+    res.json({
+      project: projectResult.rows[0],
+      draftSnapshots: reviewAttemptsRes.rows,
+      editorSessions: editorSessionsRes.rows,
+      gameEvents: attacksRes.rows,
+      finalSubmissions: submissionsRes.rows
+    });
+  } catch (error) {
+    console.error('Get analytics export error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics export' });
+  }
+});
+
 // Get project feedback (admin only)
 router.get('/projects/:code/feedback', async (req: Request, res: Response): Promise<void> => {
   try {

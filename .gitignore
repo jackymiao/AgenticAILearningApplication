@@ -1,8 +1,10 @@
 node_modules/
 .env
 .env.local
+.env.test
 dist/
 build/
 *.log
 .DS_Store
 neondb_backup.sql
+exports/

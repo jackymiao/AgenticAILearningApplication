@@ -52,7 +52,7 @@ router.post('/projects/:code/player/init', async (req: Request, res: Response): 
     }
     
     const limit = projectResult.rows[0].attempt_limit_per_category;
-    const reviewCooldownSeconds = projectResult.rows[0].review_cooldown_seconds || 120;
+    const reviewCooldownSeconds = projectResult.rows[0].review_cooldown_seconds ?? 120;
     
     // Insert or get existing player state
     const result = await pool.query(
@@ -264,10 +264,15 @@ router.post('/projects/:code/attack', async (req: Request, res: Response): Promi
         }
       }
       
-      // Start timer to auto-resolve attack after 15 seconds
-      setTimeout(async () => {
+      // Start timer to auto-resolve attack after 15 seconds.
+      // unref() prevents this timer from keeping test processes alive.
+      const attackTimeout = setTimeout(async () => {
         await autoResolveAttack(attackId, code, attackerName, targetName, ws);
       }, 15000);
+
+      if (typeof (attackTimeout as any).unref === 'function') {
+        (attackTimeout as any).unref();
+      }
       
       res.json({ 
         success: true, 
