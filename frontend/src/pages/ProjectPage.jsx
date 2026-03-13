@@ -661,7 +661,7 @@ export default function ProjectPage() {
             />
             <div style={{ display: 'flex', gap: '24px', fontSize: '14px', color: '#666' }}>
               <div>Word Limit: <strong>{project.word_limit}</strong></div>
-              <div>Review Attempts Allowed: <strong>{project.attempt_limit_per_category}</strong></div>
+              <div>Pass Tokens for Review: <strong>{project.attempt_limit_per_category}</strong></div>
             </div>
           </div>
         </section>
