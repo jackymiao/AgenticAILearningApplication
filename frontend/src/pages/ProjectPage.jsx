@@ -296,22 +296,13 @@ export default function ProjectPage() {
     const wordCount = essay.split(/\s+/).filter(w => w.length > 0).length;
     
     try {
-      const response = await fetch(`/api/public/projects/${code}/editor-events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          userName,
-          eventType: 'blur',
-          duration_ms: focusDuration,
-          essay_length: wordCount,
-          attempt_number: attemptNumberRef.current
-        })
+      await publicApi.logEditorEvent(code, {
+        userName,
+        eventType: 'blur',
+        duration_ms: focusDuration,
+        essay_length: wordCount,
+        attempt_number: attemptNumberRef.current
       });
-
-      if (!response.ok) {
-        throw new Error(`Editor analytics failed: ${response.status}`);
-      }
     } catch (err) {
       console.error('[EDITOR] ❌ Failed to log blur event:', err);
     }

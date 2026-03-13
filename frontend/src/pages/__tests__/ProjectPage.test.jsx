@@ -12,6 +12,7 @@ jest.mock('../../api/endpoints', () => ({
     getUserState: jest.fn(),
     submitReview: jest.fn(),
     submitFinal: jest.fn(),
+    logEditorEvent: jest.fn(),
     checkFeedback: jest.fn(),
   },
   gameApi: {
@@ -111,6 +112,7 @@ describe('ProjectPage', () => {
     window.confirm = jest.fn(() => true);
     window.alert = jest.fn();
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
+    publicApi.logEditorEvent.mockResolvedValue({ ok: true });
 
     publicApi.getProject.mockResolvedValue({
       code: 'TEST01',
@@ -572,23 +574,18 @@ describe('ProjectPage', () => {
     fireEvent.blur(essayArea);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/public/projects/TEST01/editor-events',
+      expect(publicApi.logEditorEvent).toHaveBeenCalledWith(
+        'TEST01',
         expect.objectContaining({
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          userName: 'Jane Smith',
+          eventType: 'blur',
+          essay_length: 5,
+          attempt_number: 0,
         })
       );
     });
 
-    const payload = JSON.parse(global.fetch.mock.calls[0][1].body);
-    expect(payload).toMatchObject({
-      userName: 'Jane Smith',
-      eventType: 'blur',
-      essay_length: 5,
-      attempt_number: 0,
-    });
+    const payload = publicApi.logEditorEvent.mock.calls[0][1];
     expect(typeof payload.duration_ms).toBe('number');
   });
 });

@@ -40,6 +40,11 @@ export const publicApi = {
       method: "POST",
       body: JSON.stringify({userName, essay}),
     }),
+  logEditorEvent: (code, payload) =>
+    apiFetch(`/public/projects/${code}/editor-events`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   getLeaderboard: (code) => apiFetch(`/public/projects/${code}/leaderboard`),
   checkFeedback: (code, userName) =>
     apiFetch(`/public/${code}/feedback/check`, {
