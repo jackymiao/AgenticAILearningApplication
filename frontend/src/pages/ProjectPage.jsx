@@ -42,6 +42,7 @@ export default function ProjectPage() {
   const [attackWaitingResult, setAttackWaitingResult] = useState(false);
   const [cooldownEnds, setCooldownEnds] = useState(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   
   // Feedback state
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -81,6 +82,19 @@ export default function ProjectPage() {
   useEffect(() => {
     loadProject();
   }, [code]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Add CSS to constrain images and ensure proper list/alignment display
   useEffect(() => {
@@ -324,13 +338,17 @@ export default function ProjectPage() {
   };
 
   // WebSocket connection for real-time game events
-  useWebSocket(
+  const wsState = useWebSocket(
     code,
     userNameSubmitted ? userName : null,
     handleOnAttackReceived,
     handleOnTokenUpdate,
     handleOnAttackResult
   );
+
+  const wsConnected = wsState?.connected ?? false;
+  const wsStatus = wsState?.status ?? 'idle';
+  const wsLastError = wsState?.lastError ?? '';
   
   // Heartbeat to maintain active session
   useEffect(() => {
@@ -769,6 +787,62 @@ export default function ProjectPage() {
                   fontWeight: '600'
                 }}>
                   Project is currently disabled. Review and final submission are unavailable.
+                </div>
+              </section>
+            )}
+            {!isOnline && (
+              <section style={{ marginBottom: '24px' }}>
+                <div style={{
+                  backgroundColor: '#fff3cd',
+                  border: '2px solid #ff9800',
+                  color: '#8a5700',
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  fontWeight: '600'
+                }}>
+                  You are offline. Real-time attack and defense notifications are temporarily unavailable.
+                  <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: '500' }}>
+                    If you use privacy/ad blockers, allow this site before reconnecting.
+                  </div>
+                  <details style={{ marginTop: '8px', fontSize: '13px', fontWeight: '500' }}>
+                    <summary style={{ cursor: 'pointer' }}>How to allow this site (Chrome/Safari)</summary>
+                    <div style={{ marginTop: '6px', lineHeight: 1.5 }}>
+                      Chrome: Click the extension icon and disable blockers for this site, then refresh.<br />
+                      Safari: Turn off content blockers for this website in the address bar settings, then refresh.<br />
+                      Firefox: Disable Enhanced Tracking Protection or blocker extensions for this site, then refresh.<br />
+                      Edge: Click the lock icon and disable Tracking Prevention for this site (or pause blocker extensions), then refresh.
+                    </div>
+                  </details>
+                </div>
+              </section>
+            )}
+            {isOnline && userNameSubmitted && !wsConnected && wsStatus !== 'idle' && (
+              <section style={{ marginBottom: '24px' }}>
+                <div style={{
+                  backgroundColor: '#fff3cd',
+                  border: '2px solid #ff9800',
+                  color: '#8a5700',
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  fontWeight: '600'
+                }}>
+                  {wsStatus === 'reconnecting'
+                    ? 'Real-time connection lost. Reconnecting... attack/defense updates may be delayed.'
+                    : wsStatus === 'connecting'
+                      ? 'Connecting to real-time updates...'
+                      : wsLastError || 'Real-time connection is unavailable. Attack/defense notifications may not appear.'}
+                  <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: '500' }}>
+                    If this continues, disable privacy/ad blockers for this site and refresh the page.
+                  </div>
+                  <details style={{ marginTop: '8px', fontSize: '13px', fontWeight: '500' }}>
+                    <summary style={{ cursor: 'pointer' }}>How to allow this site (Chrome/Safari)</summary>
+                    <div style={{ marginTop: '6px', lineHeight: 1.5 }}>
+                      Chrome: Click the extension icon and disable blockers for this site, then refresh.<br />
+                      Safari: Turn off content blockers for this website in the address bar settings, then refresh.<br />
+                      Firefox: Disable Enhanced Tracking Protection or blocker extensions for this site, then refresh.<br />
+                      Edge: Click the lock icon and disable Tracking Prevention for this site (or pause blocker extensions), then refresh.
+                    </div>
+                  </details>
                 </div>
               </section>
             )}

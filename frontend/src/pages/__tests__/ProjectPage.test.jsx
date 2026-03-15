@@ -105,14 +105,43 @@ describe('ProjectPage', () => {
     );
   };
 
+  const setupLoggedInState = () => {
+    window.localStorage.setItem('project_TEST01_studentName', 'Jane Smith');
+    window.localStorage.setItem('project_TEST01_studentId', 'JS1234');
+    window.localStorage.setItem('project_TEST01_Jane Smith_essay', 'Saved essay text');
+
+    publicApi.getUserState.mockResolvedValue({
+      alreadySubmitted: false,
+      attemptsRemaining: 3,
+      reviewHistory: {
+        content: [],
+        structure: [],
+        mechanics: [],
+      },
+      cooldownRemaining: 0,
+    });
+
+    gameApi.initPlayer.mockResolvedValue({
+      reviewTokens: 3,
+      attackTokens: 1,
+      shieldTokens: 1,
+      cooldownRemaining: 0,
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     window.localStorage.clear();
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      get: () => true,
+    });
     useParams.mockReturnValue({ code: 'TEST01' });
     window.confirm = jest.fn(() => true);
     window.alert = jest.fn();
     global.fetch = jest.fn().mockResolvedValue({ ok: true });
     publicApi.logEditorEvent.mockResolvedValue({ ok: true });
+    useWebSocket.mockReturnValue({ connected: true, status: 'connected', lastError: '' });
 
     publicApi.getProject.mockResolvedValue({
       code: 'TEST01',
@@ -601,5 +630,106 @@ describe('ProjectPage', () => {
 
     expect(blurPayload).toBeDefined();
     expect(typeof blurPayload.duration_ms).toBe('number');
+  });
+
+  it('shows offline banner with strict privacy guidance and browser help text when logged in', async () => {
+    setupLoggedInState();
+
+    const originalOnLineDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      get: () => false,
+    });
+
+    renderProjectPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Signed in as')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('You are offline. Real-time attack and defense notifications are temporarily unavailable.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('If you use privacy/ad blockers, allow this site before reconnecting.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('How to allow this site (Chrome/Safari)'));
+    const offlineHelp = screen.getByText('How to allow this site (Chrome/Safari)').closest('details');
+    expect(offlineHelp).toBeInTheDocument();
+    expect(offlineHelp).toHaveTextContent('Chrome: Click the extension icon and disable blockers for this site, then refresh.');
+    expect(offlineHelp).toHaveTextContent('Safari: Turn off content blockers for this website in the address bar settings, then refresh.');
+    expect(offlineHelp).toHaveTextContent('Firefox: Disable Enhanced Tracking Protection or blocker extensions for this site, then refresh.');
+    expect(offlineHelp).toHaveTextContent('Edge: Click the lock icon and disable Tracking Prevention for this site (or pause blocker extensions), then refresh.');
+
+    if (originalOnLineDescriptor) {
+      Object.defineProperty(window.navigator, 'onLine', originalOnLineDescriptor);
+    }
+  });
+
+  it('shows websocket reconnecting warning with strict guidance and expanded browser help', async () => {
+    setupLoggedInState();
+    useWebSocket.mockReturnValue({ connected: false, status: 'reconnecting', lastError: '' });
+
+    renderProjectPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Signed in as')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('Real-time connection lost. Reconnecting... attack/defense updates may be delayed.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('If this continues, disable privacy/ad blockers for this site and refresh the page.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('How to allow this site (Chrome/Safari)'));
+    const wsHelp = screen.getByText('How to allow this site (Chrome/Safari)').closest('details');
+    expect(wsHelp).toBeInTheDocument();
+    expect(wsHelp).toHaveTextContent('Chrome: Click the extension icon and disable blockers for this site, then refresh.');
+    expect(wsHelp).toHaveTextContent('Safari: Turn off content blockers for this website in the address bar settings, then refresh.');
+    expect(wsHelp).toHaveTextContent('Firefox: Disable Enhanced Tracking Protection or blocker extensions for this site, then refresh.');
+    expect(wsHelp).toHaveTextContent('Edge: Click the lock icon and disable Tracking Prevention for this site (or pause blocker extensions), then refresh.');
+  });
+
+  it('shows websocket error warning with strict custom error text', async () => {
+    setupLoggedInState();
+    useWebSocket.mockReturnValue({
+      connected: false,
+      status: 'error',
+      lastError: 'Real-time connection failed. Check your network, disable privacy/ad-blocker for this site, and refresh.',
+    });
+
+    renderProjectPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Signed in as')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('Real-time connection failed. Check your network, disable privacy/ad-blocker for this site, and refresh.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('If this continues, disable privacy/ad blockers for this site and refresh the page.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows websocket disconnected fallback warning text when no lastError is provided', async () => {
+    setupLoggedInState();
+    useWebSocket.mockReturnValue({ connected: false, status: 'disconnected', lastError: '' });
+
+    renderProjectPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Signed in as')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('Real-time connection is unavailable. Attack/defense notifications may not appear.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('If this continues, disable privacy/ad blockers for this site and refresh the page.')
+    ).toBeInTheDocument();
   });
 });

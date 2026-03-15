@@ -9,8 +9,11 @@ export function useWebSocket(
 ) {
   const ws = useRef(null);
   const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState("idle");
+  const [lastError, setLastError] = useState("");
   const reconnectTimeout = useRef(null);
   const heartbeatInterval = useRef(null);
+  const reconnectCount = useRef(0);
 
   // Use refs to capture latest callbacks without causing reconnects
   const onAttackReceivedRef = useRef(onAttackReceived);
@@ -31,9 +34,15 @@ export function useWebSocket(
   }, [onAttackResult]);
 
   useEffect(() => {
-    if (!projectCode || !userName) return;
+    if (!projectCode || !userName) {
+      setConnected(false);
+      setStatus("idle");
+      setLastError("");
+      return;
+    }
 
-    const connect = () => {
+    const connect = (isReconnect = false) => {
+      setStatus(isReconnect ? "reconnecting" : "connecting");
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
@@ -62,6 +71,9 @@ export function useWebSocket(
           console.log("[WS] Connected");
         }
         setConnected(true);
+        setStatus("connected");
+        setLastError("");
+        reconnectCount.current = 0;
 
         // Register with project and userName
         ws.current.send(
@@ -140,6 +152,7 @@ export function useWebSocket(
           console.log("[WS] Disconnected");
         }
         setConnected(false);
+        setStatus("disconnected");
 
         // Clear heartbeat
         if (heartbeatInterval.current) {
@@ -149,14 +162,19 @@ export function useWebSocket(
 
         // Attempt reconnect after 3 seconds
         reconnectTimeout.current = setTimeout(() => {
+          reconnectCount.current += 1;
           if (import.meta.env.DEBUG === "1") {
             console.log("[WS] Reconnecting...");
           }
-          connect();
+          connect(true);
         }, 3000);
       };
 
       ws.current.onerror = (error) => {
+        setStatus("error");
+        setLastError(
+          "Real-time connection failed. Check your network, disable privacy/ad-blocker for this site, and refresh.",
+        );
         console.error("[WS] Error:", error);
       };
     };
@@ -177,5 +195,5 @@ export function useWebSocket(
     };
   }, [projectCode, userName]);
 
-  return {connected};
+  return {connected, status, lastError};
 }
