@@ -50,6 +50,11 @@ export default function ProjectPage() {
   // Editor tracking state
   const editorFocusTimeRef = useRef(null);
   const attemptNumberRef = useRef(0);
+  const seenAttackIdsRef = useRef(new Set());
+  const queueMethodsRef = useRef({
+    enqueue: null,
+    clear: null,
+  });
 
   // Load saved student name/id and essay from localStorage on mount
   useEffect(() => {
@@ -261,12 +266,26 @@ export default function ProjectPage() {
       console.error('Failed to initialize player:', err);
     }
   }, [code, userName]);
+
+  useEffect(() => {
+    queueMethodsRef.current.enqueue = incomingAttackQueue.enqueue;
+    queueMethodsRef.current.clear = incomingAttackQueue.clear;
+  }, [incomingAttackQueue.enqueue, incomingAttackQueue.clear]);
+
+  const enqueueAttackIfNew = useCallback((attackId) => {
+    if (!attackId) return false;
+    if (seenAttackIdsRef.current.has(attackId)) return false;
+
+    seenAttackIdsRef.current.add(attackId);
+    queueMethodsRef.current.enqueue?.(attackId);
+    return true;
+  }, []);
   
   // WebSocket callbacks wrapped in useCallback to maintain stable references
   const handleOnAttackReceived = useCallback((attackId) => {
-    // Handle incoming attack - add to queue for sequential display
-    incomingAttackQueue.enqueue(attackId);
-  }, [incomingAttackQueue]);
+    // Strict dedupe by attackId to avoid duplicate modal from WS + recovery fetch.
+    enqueueAttackIfNew(attackId);
+  }, [enqueueAttackIfNew]);
 
   const handleOnTokenUpdate = useCallback(async (updatedTokens) => {
     // Handle token update
@@ -349,6 +368,50 @@ export default function ProjectPage() {
   const wsConnected = wsState?.connected ?? false;
   const wsStatus = wsState?.status ?? 'idle';
   const wsLastError = wsState?.lastError ?? '';
+
+  // Reset per-session dedupe and queue whenever project/user identity changes.
+  useEffect(() => {
+    seenAttackIdsRef.current = new Set();
+    queueMethodsRef.current.clear?.();
+  }, [code, userNameSubmitted, userName]);
+
+  // Recovery fetch on initial connect and every reconnect.
+  useEffect(() => {
+    if (!wsConnected || !userNameSubmitted || !userName) return;
+
+    let cancelled = false;
+
+    const recoverPendingAttacks = async () => {
+      try {
+        const data = await gameApi.getPendingAttacks(code, userName);
+        if (cancelled) return;
+
+        const pending = Array.isArray(data?.attacks) ? data.attacks : [];
+        let added = 0;
+
+        // Backend already returns FIFO order by expires_at ASC.
+        for (const attack of pending) {
+          if (enqueueAttackIfNew(attack.attackId)) {
+            added += 1;
+          }
+        }
+
+        if (added > 0) {
+          console.log(
+            `[GAME] Recovered ${added} pending attack(s) after connect/reconnect`,
+          );
+        }
+      } catch (err) {
+        console.error('Failed to recover pending attacks:', err);
+      }
+    };
+
+    recoverPendingAttacks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wsConnected, userNameSubmitted, userName, code, enqueueAttackIfNew]);
   
   // Heartbeat to maintain active session
   useEffect(() => {

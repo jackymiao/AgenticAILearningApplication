@@ -170,6 +170,53 @@ router.get('/projects/:code/active-players', async (req: Request, res: Response)
   }
 });
 
+// Get pending attacks for a target user (reconnect / reload recovery)
+router.get('/projects/:code/pending-attacks', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const code = normalizeProjectCode(req.params.code);
+    const userName = req.query.userName as string;
+
+    const enabled = await ensureProjectEnabled(code, res);
+    if (!enabled) return;
+
+    if (!userName) {
+      res.status(400).json({ error: 'userName is required' });
+      return;
+    }
+
+    const userNameNorm = normalizeUserName(userName);
+
+    // Recovery policy: include only still-pending attacks with >=3s remaining,
+    // returned in FIFO order by earliest expiry.
+    const result = await pool.query(
+      `SELECT id, expires_at
+       FROM attacks
+       WHERE project_code = $1
+         AND target_name_norm = $2
+         AND status = 'pending'
+         AND expires_at > NOW() + INTERVAL '3 seconds'
+       ORDER BY expires_at ASC`,
+      [code, userNameNorm]
+    );
+
+    const attacks = result.rows.map((row) => {
+      const remainingMs = Math.max(
+        0,
+        new Date(row.expires_at).getTime() - Date.now()
+      );
+      return {
+        attackId: row.id,
+        remainingMs
+      };
+    });
+
+    res.json({ attacks });
+  } catch (error) {
+    console.error('Get pending attacks error:', error);
+    res.status(500).json({ error: 'Failed to get pending attacks' });
+  }
+});
+
 // Initiate an attack
 router.post('/projects/:code/attack', async (req: Request, res: Response): Promise<void> => {
   try {

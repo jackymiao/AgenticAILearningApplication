@@ -89,6 +89,10 @@ export const gameApi = {
     apiFetch(
       `/game/projects/${code}/active-players?userName=${encodeURIComponent(userName)}`,
     ),
+  getPendingAttacks: (code, userName) =>
+    apiFetch(
+      `/game/projects/${code}/pending-attacks?userName=${encodeURIComponent(userName)}`,
+    ),
   attack: (code, attackerName, targetName) =>
     apiFetch(`/game/projects/${code}/attack`, {
       method: "POST",
