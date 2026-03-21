@@ -1,91 +1,99 @@
+import { URLSearchParams } from 'url';
 import { pool } from '../db/index.js';
 
-interface GPTZeroResponse {
-  documents: Array<{
-    predicted_class: 'ai' | 'human' | 'mixed' | string;
-    confidence_score: number;
-    confidence_category: string;
-    overall_burstiness: number;
-    subclass?: {
-      ai?: {
-        predicted_class: 'pure_ai' | 'ai_paraphrased';
-      };
+interface AiornotResponse {
+  id: string;
+  report: {
+    ai_text: {
+      confidence: number;
+      is_detected: boolean;
+      annotations?: Array<[string, number]>;
     };
-  }>;
+  };
+  metadata: {
+    word_count: number;
+    character_count: number;
+    token_count: number;
+    md5: string;
+  };
+  created_at: string;
+  external_id?: string;
 }
 
 interface DetectionResult {
   isAI: boolean;
-  predicted_class: string;
-  confidence_score: number;
-  confidence_category: string;
-  overall_burstiness: number;
-  fullResponse: GPTZeroResponse | null;
+  confidence: number;
+  wordCount: number;
+  characterCount: number;
+  tokenCount: number;
+  fullResponse: AiornotResponse | null;
 }
 
 /**
- * Check if essay content is AI-generated using GPTZero API
+ * Check if essay content is AI-generated using aiornot API
  */
 export async function detectAIContent(essay: string): Promise<DetectionResult> {
-  const apiKey = process.env.GPTZERO_API_KEY;
+  const apiKey = process.env.AIORNOT_API_KEY;
   
   if (!apiKey) {
-    console.error('[DETECTION] ❌ GPTZERO_API_KEY not configured in .env');
+    console.error('[DETECTION] ❌ AIORNOT_API_KEY not configured in .env');
     throw new Error('AI detection service not configured');
   }
 
-  const url = 'https://api.gptzero.me/v2/predict/text';
+  const url = 'https://api.aiornot.com/v2/text/sync';
   
   try {
-    console.log('[DETECTION] 🔍 Checking essay with GPTZero API...');
+    console.log('[DETECTION] 🔍 Checking essay with aiornot API...');
     
-    const response = await fetch(url, {
+    const params = new URLSearchParams({
+      include_annotations: 'true',
+    });
+
+    // Create form-urlencoded body
+    const body = new URLSearchParams({
+      text: essay,
+    }).toString();
+
+    const response = await fetch(`${url}?${params}`, {
       method: 'POST',
       headers: {
-        'x-api-key': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        document: essay,
-        multilingual: true,
-        modelVersion: '2026-02-14-base',
-        apiVersion: '2',
-      }),
+      body: body,
     });
 
     if (!response.ok) {
-      console.error(`[DETECTION] ❌ GPTZero API error: ${response.status}`, await response.text());
-      throw new Error(`GPTZero API returned ${response.status}`);
+      console.error(`[DETECTION] ❌ aiornot API error: ${response.status}`, await response.text());
+      throw new Error(`aiornot API returned ${response.status}`);
     }
 
-    const data: any = await response.json();
+    const data: AiornotResponse = await response.json() as AiornotResponse;
     
-    if (!data.documents || !Array.isArray(data.documents) || data.documents.length === 0) {
-      console.error('[DETECTION] ❌ Invalid GPTZero response format:', data);
-      throw new Error('Invalid GPTZero response format - no documents array');
+    if (!data.report || !data.report.ai_text) {
+      console.error('[DETECTION] ❌ Invalid aiornot response format:', data);
+      throw new Error('Invalid aiornot response format - missing report.ai_text');
     }
 
-    const doc = data.documents[0];
-    const predicted_class = doc.predicted_class;
-    const confidence_score = doc.confidence_score;
-    const confidence_category = doc.confidence_category;
-    const overall_burstiness = doc.overall_burstiness;
+    const aiText = data.report.ai_text;
+    const isAI = aiText.is_detected;
+    const confidence = aiText.confidence;
+    const wordCount = data.metadata.word_count;
+    const characterCount = data.metadata.character_count;
+    const tokenCount = data.metadata.token_count;
 
-    const isAI = predicted_class === 'ai' || predicted_class === 'pure_ai';
-
-    console.log(`[DETECTION] Result: predicted_class=${predicted_class}, confidence=${confidence_score}, isAI=${isAI}`);
+    console.log(`[DETECTION] Result: isAI=${isAI}, confidence=${confidence}, wordCount=${wordCount}`);
 
     return {
       isAI,
-      predicted_class,
-      confidence_score,
-      confidence_category,
-      overall_burstiness,
+      confidence,
+      wordCount,
+      characterCount,
+      tokenCount,
       fullResponse: data,
     };
   } catch (error) {
-    console.error('[DETECTION] ❌ Error calling GPTZero API:', error);
+    console.error('[DETECTION] ❌ Error calling aiornot API:', error);
     throw error;
   }
 }
@@ -102,23 +110,54 @@ export async function storeDetectionResult(
   try {
     // Store first 500 chars of essay as snippet
     const essaySnippet = essay.substring(0, 500);
+    const confidenceCategory = detection.confidence > 0.7 ? 'HIGH' : detection.confidence > 0.4 ? 'MEDIUM' : 'LOW';
+    const apiResponseId = detection.fullResponse?.id || null;
 
-    await pool.query(
+    // Insert detection record and get the ID
+    const detectionResult = await pool.query<{ id: string }>(
       `INSERT INTO ai_detections 
        (project_code, user_name_norm, essay_snippet, predicted_class, confidence_score, 
-        confidence_category, overall_burstiness, result_json)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        confidence_category, overall_burstiness, is_detected, word_count, character_count, 
+        token_count, api_response_id, result_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id`,
       [
         projectCode,
         userNameNorm,
         essaySnippet,
-        detection.predicted_class,
-        detection.confidence_score,
-        detection.confidence_category,
-        detection.overall_burstiness,
+        detection.isAI ? 'ai' : 'human',
+        detection.confidence,
+        confidenceCategory,
+        0, // No direct burstiness from aiornot, set to 0
+        detection.isAI,
+        detection.wordCount,
+        detection.characterCount,
+        detection.tokenCount,
+        apiResponseId,
         JSON.stringify(detection.fullResponse),
       ]
     );
+
+    const detectionId = detectionResult.rows[0].id;
+
+    // Store annotations if available
+    if (detection.fullResponse?.report?.ai_text?.annotations && 
+        Array.isArray(detection.fullResponse.report.ai_text.annotations) &&
+        detection.fullResponse.report.ai_text.annotations.length > 0) {
+      
+      const annotations = detection.fullResponse.report.ai_text.annotations;
+      
+      for (const [blockText, confidence] of annotations) {
+        await pool.query(
+          `INSERT INTO ai_detections_annotations 
+           (detection_id, block_text, confidence)
+           VALUES ($1, $2, $3)`,
+          [detectionId, blockText, confidence]
+        );
+      }
+      
+      console.log(`[DETECTION] ✅ Stored ${annotations.length} annotations for detection ${detectionId}`);
+    }
 
     console.log(`[DETECTION] ✅ Detection result stored for ${projectCode}/${userNameNorm}`);
   } catch (error) {
