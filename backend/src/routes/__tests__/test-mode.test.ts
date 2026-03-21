@@ -1,5 +1,6 @@
 import request from 'supertest';
 import express from 'express';
+import { jest } from '@jest/globals';
 import adminRouter from '../admin.js';
 import publicRouter from '../public.js';
 import pool from '../../db/index.js';
@@ -7,6 +8,8 @@ import pool from '../../db/index.js';
 describe('Test Mode Feature', () => {
   let app: express.Express;
   let adminApp: express.Express;
+  const originalApiKey = process.env.AIORNOT_API_KEY;
+  const originalFetch = (global as any).fetch;
   const testProjectCode = 'TSTMOD';
   const testProjectCodeDisabled = 'TSMOD2';
   const testUserName = 'testStudent';
@@ -46,15 +49,41 @@ describe('Test Mode Feature', () => {
   });
 
   beforeEach(async () => {
+    process.env.AIORNOT_API_KEY = 'test-aiornot-key';
+
     // Clean up test data before each test
     await pool.query('DELETE FROM review_attempts WHERE project_code IN ($1, $2)', [testProjectCode, testProjectCodeDisabled]);
     await pool.query('DELETE FROM player_state WHERE project_code IN ($1, $2)', [testProjectCode, testProjectCodeDisabled]);
     await pool.query('DELETE FROM project_students WHERE project_code IN ($1, $2)', [testProjectCode, testProjectCodeDisabled]);
     await pool.query('DELETE FROM ai_detections WHERE project_code IN ($1, $2)', [testProjectCode, testProjectCodeDisabled]);
     await pool.query('DELETE FROM projects WHERE code IN ($1, $2)', [testProjectCode, testProjectCodeDisabled]);
+
+    (global as any).fetch = (jest.fn() as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'det-test-id',
+        report: {
+          ai_text: {
+            confidence: 0.95,
+            is_detected: true,
+            annotations: [['Suspicious paragraph', 0.99]],
+          },
+        },
+        metadata: {
+          word_count: 120,
+          character_count: 720,
+          token_count: 150,
+          md5: 'abc123',
+        },
+        created_at: new Date().toISOString(),
+      }),
+    });
   });
 
   afterAll(async () => {
+    process.env.AIORNOT_API_KEY = originalApiKey;
+    (global as any).fetch = originalFetch;
+
     // Clean up in proper order (projects first, then admin)
     await pool.query('DELETE FROM review_attempts WHERE project_code IN ($1,$2)', [testProjectCode, testProjectCodeDisabled]);
     await pool.query('DELETE FROM player_state WHERE project_code IN ($1, $2)', [testProjectCode, testProjectCodeDisabled]);
@@ -250,6 +279,27 @@ describe('Test Mode Feature', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('finalScore');
       expect(response.body).toHaveProperty('reviews');
+    });
+
+    it('should return a warning instead of rejecting when AI is detected and test_mode is false', async () => {
+      const response = await request(app)
+        .post(`/public/projects/${testProjectCodeDisabled}/reviews`)
+        .send({
+          userName: testUserName,
+          essay: testEssay
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('warning');
+      expect(response.body.warning).toMatchObject({
+        type: 'ai-detected',
+        message: 'This essay may have been generated with AI assistance. Your review was still processed.',
+      });
+      expect(response.body.warning.detection).toMatchObject({
+        is_detected: true,
+        confidence: 0.95,
+        confidence_category: 'HIGH'
+      });
     });
 
     it('should not store AI detection data when test_mode is true', async () => {

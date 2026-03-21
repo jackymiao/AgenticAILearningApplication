@@ -27,6 +27,7 @@ export default function ProjectPage() {
   const [activeTab, setActiveTab] = useState('content');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reviewWarning, setReviewWarning] = useState(null);
   const [projectDisabled, setProjectDisabled] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -458,6 +459,7 @@ export default function ProjectPage() {
 
   const handleRunReview = async () => {
     setError('');
+    setReviewWarning(null);
 
     const available = await checkProjectAvailability();
     if (!available) return;
@@ -469,6 +471,7 @@ export default function ProjectPage() {
       
       // Clear any previous errors on success
       setError('');
+      setReviewWarning(result.warning || null);
       
       // Update tokens from response
       if (result.tokens) {
@@ -531,6 +534,7 @@ export default function ProjectPage() {
       
     } catch (err) {
       console.error('[FRONTEND] Error:', err);
+      setReviewWarning(null);
       if (err?.status === 403 && String(err?.message || '').toLowerCase().includes('disabled')) {
         setProjectDisabled(true);
       }
@@ -976,6 +980,29 @@ export default function ProjectPage() {
                       fontWeight: '500'
                     }}>
                       ⚠️ {error}
+                    </div>
+                  )}
+
+                  {reviewWarning && (
+                    <div
+                      data-testid="review-warning"
+                      style={{
+                        padding: '16px',
+                        backgroundColor: '#fff8e1',
+                        border: '2px solid #ffb300',
+                        borderRadius: '6px',
+                        marginBottom: '16px',
+                        color: '#8d6e00',
+                        fontWeight: '500',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <div style={{ marginBottom: '6px' }}>⚠️ {reviewWarning.message}</div>
+                      {reviewWarning.detection && (
+                        <div style={{ fontSize: '13px', fontWeight: '400' }}>
+                          Confidence: {Math.round((reviewWarning.detection.confidence || 0) * 100)}% ({reviewWarning.detection.confidence_category})
+                        </div>
+                      )}
                     </div>
                   )}
                   

@@ -358,6 +358,92 @@ describe('ProjectPage', () => {
     expect(screen.getByTestId('submit-review-btn')).toHaveTextContent('Wait 1:00');
   });
 
+  it('shows AI warning when review succeeds with detection warning', async () => {
+    publicApi.validateStudent.mockResolvedValue({
+      studentName: 'Jane Smith',
+      studentId: 'JS1234',
+    });
+
+    publicApi.getUserState
+      .mockResolvedValueOnce({
+        alreadySubmitted: false,
+        attemptsRemaining: 3,
+        reviewHistory: {
+          content: [],
+          structure: [],
+          mechanics: [],
+        },
+        cooldownRemaining: 0,
+      })
+      .mockResolvedValueOnce({
+        alreadySubmitted: false,
+        attemptsRemaining: 2,
+        reviewHistory: {
+          content: [{ id: 1, category: 'content', status: 'success', result_json: { score: 90 }, attempt_number: 1, created_at: new Date().toISOString() }],
+          structure: [{ id: 2, category: 'structure', status: 'success', result_json: { score: 80 }, attempt_number: 1, created_at: new Date().toISOString() }],
+          mechanics: [{ id: 3, category: 'mechanics', status: 'success', result_json: { score: 70 }, attempt_number: 1, created_at: new Date().toISOString() }],
+        },
+        cooldownRemaining: 0,
+      });
+
+    publicApi.submitReview.mockResolvedValue({
+      tokens: {
+        review_tokens: 2,
+        attack_tokens: 1,
+        shield_tokens: 1,
+      },
+      cooldownMs: 60_000,
+      reviews: [
+        { category: 'content', score: 90 },
+        { category: 'structure', score: 80 },
+        { category: 'mechanics', score: 70 },
+      ],
+      warning: {
+        type: 'ai-detected',
+        message: 'This essay may have been generated with AI assistance. Your review was still processed.',
+        detection: {
+          is_detected: true,
+          confidence: 0.95,
+          confidence_category: 'HIGH',
+        },
+      },
+    });
+
+    gameApi.initPlayer.mockResolvedValue({
+      reviewTokens: 3,
+      attackTokens: 0,
+      shieldTokens: 1,
+      cooldownRemaining: 0,
+    });
+
+    renderProjectPage();
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Enter student ID')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Enter student ID'), { target: { value: 'js1234' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter project password'), { target: { value: 'pass123' } });
+    fireEvent.click(screen.getByText('Continue'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Your Essay')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('Write your essay here...'), {
+      target: { value: 'This is a complete essay for review.' },
+    });
+
+    fireEvent.click(screen.getByTestId('submit-review-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-warning')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('⚠️ This essay may have been generated with AI assistance. Your review was still processed.')).toBeInTheDocument();
+    expect(screen.getByText('Confidence: 95% (HIGH)')).toBeInTheDocument();
+  });
+
   it('wires websocket attack callback to queue and attack action refresh', async () => {
     publicApi.validateStudent.mockResolvedValue({
       studentName: 'Jane Smith',
